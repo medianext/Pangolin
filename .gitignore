@@ -1,0 +1,7 @@
+*.sdf
+*.aps
+.vs
+ipch
+Debug
+Release
+x64
