@@ -20,6 +20,12 @@ public:
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
+private:
+    void InitControlPosition();
+    void ShowVideoParamTab(int bShow);
+    void ShowAudioParamTab(int bShow);
+    void ShowCaptureParamTab(int bShow);
+    void ShowAboutTab(int bShow);
 
 // 实现
 protected:
@@ -30,4 +36,6 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+    afx_msg void OnTabChange(NMHDR *pNMHDR, LRESULT *pResult);
 };
