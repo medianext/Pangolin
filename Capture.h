@@ -24,6 +24,7 @@ public:
 
 public:
     virtual int AddSink(Sink * sink) = 0;
+    virtual int EnumAttribute(void** attribute) = 0;
     virtual int Config(void* attribute) = 0;
     virtual int Start() = 0;
     virtual int Stop() = 0;

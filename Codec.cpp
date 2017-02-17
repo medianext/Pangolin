@@ -49,7 +49,7 @@ MediaPacket* Codec::GetVideoPacket()
 }
 
 
-MediaPacket* Codec::GetVideoPacket()
+MediaPacket* Codec::GetAudioPacket()
 {
     return NULL;
 }

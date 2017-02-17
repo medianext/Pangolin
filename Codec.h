@@ -28,7 +28,7 @@ public:
     int ConfigAudioCodec(VideoCodecAttribute* attribute);
 
     MediaPacket* GetVideoPacket();
-    MediaPacket* GetVideoPacket();
+    MediaPacket* GetAudioPacket();
 
 private:
     int EncodeVideo(MediaFrame* frame, MediaPacket* packet);
