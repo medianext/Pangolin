@@ -33,6 +33,30 @@
     <ClInclude Include="Resource.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Capture.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Sink.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Codec.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Render.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaFrame.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaPacket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="VideoCapture.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioCapture.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pangolin.cpp">
@@ -45,6 +69,27 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="RenderWnd.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Capture.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Codec.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Render.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MediaFrame.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MediaPacket.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="VideoCapture.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioCapture.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
