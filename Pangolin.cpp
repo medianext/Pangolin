@@ -40,7 +40,6 @@ CPangolinApp theApp;
 
 BOOL CPangolinApp::InitInstance()
 {
-    RegisterRenderWndClass(NULL);
 
 	// 如果一个运行在 Windows XP 上的应用程序清单指定要
 	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
@@ -73,6 +72,15 @@ BOOL CPangolinApp::InitInstance()
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
+	// 初始化Media Foundation
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr))
+	{
+		hr = MFStartup(MF_VERSION);
+	}
+
+	RegisterRenderWndClass(NULL);
+
 	CPangolinDlg dlg;
 	m_pMainWnd = &dlg;
 	INT_PTR nResponse = dlg.DoModal();
@@ -97,6 +105,10 @@ BOOL CPangolinApp::InitInstance()
 	{
 		delete pShellManager;
 	}
+
+	// 反初始化 Media Foundation
+	MFShutdown();
+	CoUninitialize();
 
 	// 由于对话框已关闭，所以将返回 FALSE 以便退出应用程序，
 	//  而不是启动应用程序的消息泵。

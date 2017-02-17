@@ -17,8 +17,8 @@ class Capture
 {
 
 public:
-    static int EnumVideoCature(TCHAR * vCaptureList[]);
-    static int EnumAudioCature(TCHAR * aCaptureList[]);
+    static int EnumVideoCature(std::vector<WCHAR *> *vCaptureList);
+    static int EnumAudioCature(std::vector<WCHAR *> *aCaptureList);
     static Capture* GetVideoCature(int index);
     static Capture* GetAudioCature(int index);
 

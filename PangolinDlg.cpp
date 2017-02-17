@@ -7,6 +7,8 @@
 #include "PangolinDlg.h"
 #include "afxdialogex.h"
 
+#include "Capture.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -52,6 +54,27 @@ BOOL CPangolinDlg::OnInitDialog()
     hTab->InsertItem(1, TEXT("音频参数"));
     hTab->InsertItem(2, TEXT("采集参数"));
     hTab->InsertItem(3, TEXT("关于"));
+
+	//初始化控件数据
+	CComboBox* hComBox = NULL;
+	std::vector<WCHAR *> strList;
+
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CAP);
+	int vCnt = Capture::EnumVideoCature(&strList);
+	for (int i = 0; i < vCnt; i++)
+	{
+		hComBox->AddString(strList[i]);
+	}
+	hComBox->SetCurSel(0);
+	strList.clear();
+
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CAP);
+	int aCnt = Capture::EnumAudioCature(&strList);
+	for (int i = 0; i < aCnt; i++)
+	{
+		hComBox->AddString(strList[i]);
+	}
+	hComBox->SetCurSel(0);
 
     ShowVideoParamTab(SW_SHOW);
     ShowAudioParamTab(SW_HIDE);
@@ -164,11 +187,11 @@ void CPangolinDlg::InitControlPosition()
     hChild = this->GetDlgItem(IDC_STATIC20);
     hChild->SetWindowPos(NULL, 30, 414, 40, 18, 0);
     hChild = this->GetDlgItem(IDC_VIDEO_CAP);
-    hChild->SetWindowPos(NULL, 90, 410, 140, 24, 0);
+    hChild->SetWindowPos(NULL, 90, 410, 185, 24, 0);
     hChild = this->GetDlgItem(IDC_STATIC21);
     hChild->SetWindowPos(NULL, 30, 446, 40, 18, 0);
     hChild = this->GetDlgItem(IDC_AUDIO_CAP);
-    hChild->SetWindowPos(NULL, 90, 442, 140, 24, 0);
+    hChild->SetWindowPos(NULL, 90, 442, 185, 24, 0);
 
     //关于
     hChild = this->GetDlgItem(IDC_STATIC30);

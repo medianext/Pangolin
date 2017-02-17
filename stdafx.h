@@ -34,12 +34,24 @@
 #include <afxcontrolbars.h>     // 功能区和控件条的 MFC 支持
 
 
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
+#include <mferror.h>
+
+#include <shlwapi.h>
+
+#include <vector>
 
 
-
-
-
-
+template <class T> void SafeRelease(T **ppT)
+{
+	if (*ppT)
+	{
+		(*ppT)->Release();
+		*ppT = NULL;
+	}
+}
 
 #ifdef _UNICODE
 #if defined _M_IX86
