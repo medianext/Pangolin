@@ -60,6 +60,10 @@ template <class T> void SafeRelease(T **ppT)
 #define LOWINT32(a) (a&0xFFFF)
 #define HIGHINT32(a) ((a>>16)&0xFFFF)
 
+#include "Capture.h"
+#include "Render.h"
+#include "Codec.h"
+
 #ifdef _UNICODE
 #if defined _M_IX86
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df' language='*'\"")

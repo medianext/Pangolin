@@ -3,7 +3,6 @@
 //
 
 #include "stdafx.h"
-#include "Capture.h"
 #include "Pangolin.h"
 #include "PangolinDlg.h"
 #include "afxdialogex.h"
@@ -57,6 +56,15 @@ BOOL CPangolinDlg::OnInitDialog()
     // 初始化媒体变量
     videoCapture = Capture::GetVideoCature(0);
     audioCapture = Capture::GetAudioCature(0);
+    render = Render::GetRender();
+    codec = new Codec();
+
+    videoCapture->AddSink(render);
+    videoCapture->AddSink(codec);
+    audioCapture->AddSink(codec);
+
+    videoCapture->Start();
+    audioCapture->Start();
 
 	//初始化控件数据
     CComboBox* hComBox = NULL;

@@ -19,6 +19,8 @@ public:
 private:
     Capture *videoCapture;
     Capture *audioCapture;
+    Render  *render;
+    Codec   *codec;
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV Ö§³Ö

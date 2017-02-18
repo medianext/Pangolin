@@ -85,6 +85,10 @@ VideoCapture::~VideoCapture()
 
 int VideoCapture::AddSink(Sink * sink)
 {
+    if (sink != NULL)
+    {
+        m_Sinks.push_back(sink);
+    }
     return 0;
 }
 
