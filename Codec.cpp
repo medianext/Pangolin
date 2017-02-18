@@ -12,7 +12,7 @@ Codec::~Codec()
 }
 
 
-int Codec::SendFrame(MediaFrame * frame, FrameType type)
+int Codec::SendFrame(MediaFrame * frame)
 {
     return 0;
 }

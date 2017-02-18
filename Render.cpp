@@ -35,7 +35,7 @@ Render* Render::GetRender()
 }
 
 
-int Render::SendFrame(MediaFrame * frame, FrameType type)
+int Render::SendFrame(MediaFrame * frame)
 {
     return 0;
 }

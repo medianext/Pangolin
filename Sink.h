@@ -6,6 +6,6 @@ class Sink
 {
 
 public:
-    virtual int SendFrame(MediaFrame * frame, FrameType type) = 0;
+    virtual int SendFrame(MediaFrame * frame) = 0;
 };
 

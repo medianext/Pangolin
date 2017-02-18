@@ -15,6 +15,6 @@ private:
     Render();
 
 public:
-    int SendFrame(MediaFrame * frame, FrameType type);
+    int SendFrame(MediaFrame * frame);
 };
 

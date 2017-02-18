@@ -43,6 +43,7 @@ private:
     IMFActivate				*m_pActivate;
     IMFSourceReader         *m_pReader;
     vector<VideoCaptureAttribute*> m_Attributes;
+    VideoCaptureAttribute    m_attribute;
     vector<Sink *>           m_Sinks;
 
 public:

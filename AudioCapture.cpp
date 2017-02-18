@@ -58,6 +58,8 @@ AudioCapture::AudioCapture(void * priv) :
                         attribute->channel = uChannel;
                         attribute->samplerate = nSamplesRate;
                         m_Attributes.push_back(attribute);
+                        m_attribute.channel = uChannel;
+                        m_attribute.samplerate = nSamplesRate;
                     }
                     SafeRelease(&pMediaType);
                 }
@@ -155,77 +157,18 @@ HRESULT AudioCapture::OnReadSample(
     if (SUCCEEDED(hr))
     {
         if (pSample)
-        {
-            // Get the video frame buffer from the sample.
+        {            // Get the video frame buffer from the sample.
+            hr = pSample->GetBufferByIndex(0, &pBuffer);
+            if (SUCCEEDED(hr))
+            {
+                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, 0, 0);
 
-            // 			hr = pSample->GetBufferByIndex(0, &pBuffer);
-            // 
-            // 			// Draw the frame.
-            // 
-            // 			if (SUCCEEDED(hr))
-            // 			{
-            // 				BYTE * pbScanline0;
-            // 				LONG lStride;
-            // 
-            // 				VideoBufferLock buffer(pBuffer);    // Helper object to lock the video buffer.
-            // 
-            // 													// Lock the video buffer. This method returns a pointer to the first scan
-            // 													// line in the image, and the stride in bytes.
-            // 				hr = buffer.LockBuffer(m_videoAttribute.m_uStride, m_videoAttribute.m_uHeight, &pbScanline0, &lStride);
-            // 
-            // 				if (SUCCEEDED(hr)) {
-            // 					hr = m_draw.DrawFrame(pbScanline0, lStride);
-            // 
-            // 					av_image_fill_pointers(m_srcFrame->data, (AVPixelFormat)m_srcFrame->format, m_srcFrame->height, pbScanline0, m_srcFrame->linesize);
-            // 
-            // 					ret = sws_scale(m_swsContext, m_srcFrame->data, m_srcFrame->linesize, 0, m_srcFrame->height, m_dstFrame->data, m_dstFrame->linesize);
-            // 
-            // 
-            // 					if (m_bYUVRecordStatus == TRUE)
-            // 					{
-            // 						int len = av_image_get_buffer_size((AVPixelFormat)m_dstFrame->format, m_dstFrame->width, m_dstFrame->height, 32);
-            // 						yuvfile->write((char *)m_dstFrame->data[0], len);
-            // 						count++;
-            // 						LOG_INFO("write %d byte data\n", len);
-            // 					}
-            // 
-            // 					if (m_bH264RecordStatus == TRUE)
-            // 					{
-            // 						static BOOL first = TRUE;
-            // 						AVPacket pkt;
-            // 						av_init_packet(&pkt);
-            // 						pkt.data = NULL;    // packet data will be allocated by the encoder
-            // 						pkt.size = 0;
-            // 						int got_frame;
-            // 						ret = avcodec_encode_video2(m_codecContext, &pkt, m_dstFrame, &got_frame);
-            // 						if (ret != 0)
-            // 						{
-            // 							LOG_ERR("avcodec_encode_video2 error with %d !\n", ret);
-            // 						}
-            // 
-            // 						if (got_frame)
-            // 						{
-            // 							if (first == TRUE)
-            // 							{
-            // 								if ((pkt.flags & AV_PKT_FLAG_KEY)) {
-            // 									first = FALSE;
-            // 									LOG_INFO("get first key frame\n");
-            // 									h264file->write((char *)pkt.data, pkt.size);
-            // 								}
-            // 							}
-            // 							else {
-            // 								h264file->write((char *)pkt.data, pkt.size);
-            // 							}
-            // 
-            // 							LOG_DEBUG("pkt.pts=%lld pkt.dts=%lld pkt.size=%d !\n", pkt.pts, pkt.dts, pkt.size);
-            // 							av_packet_unref(&pkt);
-            // 						}
-            // 
-            // 						m_dstFrame->pts++;
-            // 					}
-            // 				}
-            //
-            //			}
+                if (SUCCEEDED(hr)) {
+                    vector<Sink*>::iterator iter = m_Sinks.begin();
+                    for (; iter != m_Sinks.end(); ++iter)
+                        (*iter)->SendFrame(&frame);
+                }
+            }
         }
 
     }

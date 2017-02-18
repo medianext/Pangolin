@@ -194,6 +194,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AudioCapture.h" />
+    <ClInclude Include="BufferLock.h" />
     <ClInclude Include="Capture.h" />
     <ClInclude Include="Codec.h" />
     <ClInclude Include="MediaFrame.h" />
