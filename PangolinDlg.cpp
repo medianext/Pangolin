@@ -3,11 +3,10 @@
 //
 
 #include "stdafx.h"
+#include "Capture.h"
 #include "Pangolin.h"
 #include "PangolinDlg.h"
 #include "afxdialogex.h"
-
-#include "Capture.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -55,12 +54,63 @@ BOOL CPangolinDlg::OnInitDialog()
     hTab->InsertItem(2, TEXT("采集参数"));
     hTab->InsertItem(3, TEXT("关于"));
 
+    // 初始化媒体变量
+    videoCapture = Capture::GetVideoCature(0);
+    audioCapture = Capture::GetAudioCature(0);
+
 	//初始化控件数据
-	CComboBox* hComBox = NULL;
+    CComboBox* hComBox = NULL;
+    CEdit* hEdit = NULL;
+    int vCnt, aCnt;
+
+    vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
+    vCnt = videoCapture->EnumAttribute((void*)&pVideoAttribute);
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_RESOLUTION);
+    set<wstring> strset;
+    for (int i = 0, j=0; i < vCnt; i++)
+    {
+        wchar_t str[20];
+        swprintf(str, L"%dx%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height);
+        wstring s = str;
+        if (strset.count(s)==0)
+        {
+            strset.insert(s);
+            hComBox->AddString(str);
+            hComBox->SetItemData(j, MAKEINT32((*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height));
+            j++;
+        }
+    }
+    hComBox->SetCurSel(0);
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_FPS);
+    hComBox->SetCurSel(0);
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CODEC);
+    hComBox->SetCurSel(0);
+    hEdit = (CEdit*)this->GetDlgItem(IDC_VIDEO_BITRATE);
+    hEdit->SetWindowTextW(L"2000");
+
+
+    vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
+    aCnt = audioCapture->EnumAttribute((void*)&pAudioAttribute);
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+    for (int i = 0; i < aCnt; i++)
+    {
+        wchar_t str[20];
+        swprintf(str, L"%d", (*pAudioAttribute)[i]->samplerate);
+        hComBox->AddString(str);
+    }
+    hComBox->SetCurSel(0);
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CHANNEL);
+    hComBox->SetCurSel(0);
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);
+    hComBox->SetCurSel(0);
+    hEdit = (CEdit*)this->GetDlgItem(IDC_AUDIO_BITRATE);
+    hEdit->SetWindowTextW(L"64");
+
+
 	std::vector<WCHAR *> strList;
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CAP);
-	int vCnt = Capture::EnumVideoCature(&strList);
+	vCnt = Capture::EnumVideoCature(&strList);
 	for (int i = 0; i < vCnt; i++)
 	{
 		hComBox->AddString(strList[i]);
@@ -69,19 +119,24 @@ BOOL CPangolinDlg::OnInitDialog()
 	strList.clear();
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CAP);
-	int aCnt = Capture::EnumAudioCature(&strList);
+	aCnt = Capture::EnumAudioCature(&strList);
 	for (int i = 0; i < aCnt; i++)
 	{
 		hComBox->AddString(strList[i]);
 	}
 	hComBox->SetCurSel(0);
 
+    hEdit = (CEdit*)this->GetDlgItem(IDC_RTMPURL);
+    hEdit->SetWindowTextW(L"rtmp://127.0.0.1/live/test");
+    hEdit->SetSel(100);
+    hEdit->SetFocus();
+
     ShowVideoParamTab(SW_SHOW);
     ShowAudioParamTab(SW_HIDE);
     ShowCaptureParamTab(SW_HIDE);
     ShowAboutTab(SW_HIDE);
 
-	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+	return FALSE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
 // 如果向对话框添加最小化按钮，则需要下面的代码

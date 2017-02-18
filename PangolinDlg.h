@@ -16,6 +16,9 @@ public:
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_PANGOLIN_DIALOG };
 #endif
+private:
+    Capture *videoCapture;
+    Capture *audioCapture;
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV Ö§³Ö

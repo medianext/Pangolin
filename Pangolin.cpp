@@ -3,6 +3,7 @@
 //
 
 #include "stdafx.h"
+#include "Capture.h"
 #include "Pangolin.h"
 #include "PangolinDlg.h"
 
@@ -77,6 +78,7 @@ BOOL CPangolinApp::InitInstance()
 	if (SUCCEEDED(hr))
 	{
 		hr = MFStartup(MF_VERSION);
+        Capture::Init();
 	}
 
 	RegisterRenderWndClass(NULL);
@@ -106,6 +108,7 @@ BOOL CPangolinApp::InitInstance()
 		delete pShellManager;
 	}
 
+    Capture::Uninit();
 	// ∑¥≥ı ºªØ Media Foundation
 	MFShutdown();
 	CoUninitialize();

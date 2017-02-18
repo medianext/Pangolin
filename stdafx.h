@@ -42,7 +42,9 @@
 #include <shlwapi.h>
 
 #include <vector>
-
+#include <string>
+#include <set>
+using namespace std;
 
 template <class T> void SafeRelease(T **ppT)
 {
@@ -52,6 +54,11 @@ template <class T> void SafeRelease(T **ppT)
 		*ppT = NULL;
 	}
 }
+
+#define MAKEINT32(a,b) ((a<<16)|b&0xFFFF)
+
+#define LOWINT32(a) (a&0xFFFF)
+#define HIGHINT32(a) ((a>>16)&0xFFFF)
 
 #ifdef _UNICODE
 #if defined _M_IX86
