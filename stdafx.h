@@ -39,6 +39,8 @@
 #include <mfreadwrite.h>
 #include <mferror.h>
 
+#include <d3d9.h>
+
 #include <shlwapi.h>
 
 #include <vector>

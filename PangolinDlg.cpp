@@ -53,18 +53,9 @@ BOOL CPangolinDlg::OnInitDialog()
     hTab->InsertItem(2, TEXT("采集参数"));
     hTab->InsertItem(3, TEXT("关于"));
 
-    // 初始化媒体变量
+    // 初始化采集器
     videoCapture = Capture::GetVideoCature(0);
     audioCapture = Capture::GetAudioCature(0);
-    render = Render::GetRender();
-    codec = new Codec();
-
-    videoCapture->AddSink(render);
-    videoCapture->AddSink(codec);
-    audioCapture->AddSink(codec);
-
-    videoCapture->Start();
-    audioCapture->Start();
 
 	//初始化控件数据
     CComboBox* hComBox = NULL;
@@ -143,6 +134,18 @@ BOOL CPangolinDlg::OnInitDialog()
     ShowAudioParamTab(SW_HIDE);
     ShowCaptureParamTab(SW_HIDE);
     ShowAboutTab(SW_HIDE);
+
+    // 初始化Render和Codec
+    Render::Init(GetDlgItem(IDC_RENDER)->GetSafeHwnd());
+    render = Render::GetRender();
+    codec = new Codec();
+
+    videoCapture->AddSink(render);
+    videoCapture->AddSink(codec);
+    audioCapture->AddSink(codec);
+
+    videoCapture->Start();
+    audioCapture->Start();
 
 	return FALSE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
