@@ -3,14 +3,19 @@
 #include "Sink.h"
 
 struct VideoCaptureAttribute {
+    GUID format;
     int width;
+    int stride;
     int height;
     int fps;
 };
 
 struct AudioCaptureAttribute {
+    GUID format;
     int channel;
     int samplerate;
+    int samplesize;
+    int bitwide;
 };
 
 class Capture

@@ -50,11 +50,19 @@ VideoCapture::VideoCapture(void * priv) :
                     if (SUCCEEDED(hr))
                     {
                         UINT32 uWidth, uHeight, uNummerator, uDenominator;
+                        LONG lStride;
                         GUID subType;
                         pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
                         MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
                         MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+                        hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+                        if (FAILED(hr))
+                        {
+                            hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
+                        }
                         attribute = new VideoCaptureAttribute();
+                        attribute->format = subType;
+                        attribute->stride = lStride;
                         attribute->width = uWidth;
                         attribute->height = uHeight;
                         attribute->fps = uNummerator;
@@ -64,6 +72,8 @@ VideoCapture::VideoCapture(void * priv) :
                         {
                             maxFactor = factor;
                             pMediaTypeHandler->SetCurrentMediaType(pMediaType);
+                            m_attribute.format = subType;
+                            m_attribute.stride = lStride;
                             m_attribute.width = uWidth;
                             m_attribute.height = uHeight;
                             m_attribute.fps = uNummerator;
@@ -90,6 +100,33 @@ VideoCapture::VideoCapture(void * priv) :
         hr = MFCreateSourceReaderFromMediaSource(pSource, pAttributes, &m_pReader);
         if (!SUCCEEDED(hr))
         {
+        }
+        IMFMediaType * pMediaType = NULL;
+        hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pMediaType);
+        if (SUCCEEDED(hr))
+        {
+            UINT32 uWidth, uHeight, uNummerator, uDenominator;
+            LONG lStride;
+            GUID subType;
+            pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+            MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
+            MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+            hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+            if (FAILED(hr))
+            {
+                hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
+            }
+            m_attribute.format = subType;
+            m_attribute.stride = lStride;
+            m_attribute.width = uWidth;
+            m_attribute.height = uHeight;
+            m_attribute.fps = uNummerator;
+            char formatName[5] = { 0 };
+            formatName[0] = ((char *)(&subType.Data1))[0];
+            formatName[1] = ((char *)(&subType.Data1))[1];
+            formatName[2] = ((char *)(&subType.Data1))[2];
+            formatName[3] = ((char *)(&subType.Data1))[3];
+            SafeRelease(&pMediaType);
         }
         SafeRelease(&pAttributes);
     }

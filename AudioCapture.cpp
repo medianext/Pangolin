@@ -49,17 +49,23 @@ AudioCapture::AudioCapture(void * priv) :
                     hr = pMediaTypeHandler->GetMediaTypeByIndex(j, &pMediaType);
                     if (SUCCEEDED(hr))
                     {
-                        UINT32 uChannel, nSamplesRate;
+                        UINT32 uChannel, nSamplesRate, wBitsPerSample, wSamplesPerBlock;
                         GUID subType;
-                        pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
-                        pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
-                        pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
+                        hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+                        hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
+                        hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
+                        hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
+                        hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_BLOCK, &wSamplesPerBlock);
                         attribute = new AudioCaptureAttribute();
+                        attribute->format = subType;
                         attribute->channel = uChannel;
                         attribute->samplerate = nSamplesRate;
+                        attribute->bitwide = wBitsPerSample;
                         m_Attributes.push_back(attribute);
+                        m_attribute.format = subType;
                         m_attribute.channel = uChannel;
                         m_attribute.samplerate = nSamplesRate;
+                        m_attribute.bitwide = wBitsPerSample;
                     }
                     SafeRelease(&pMediaType);
                 }
@@ -82,6 +88,24 @@ AudioCapture::AudioCapture(void * priv) :
         hr = MFCreateSourceReaderFromMediaSource(pSource, pAttributes, &m_pReader);
         if (!SUCCEEDED(hr))
         {
+        }
+        IMFMediaType * pMediaType = NULL;
+        hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pMediaType);
+        if (SUCCEEDED(hr))
+        {
+
+            UINT32 uChannel, nSamplesRate, wBitsPerSample, wSamplesPerBlock;
+            GUID subType;
+            hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+            hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
+            hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
+            hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
+            hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_BLOCK, &wSamplesPerBlock);
+            m_attribute.format = subType;
+            m_attribute.channel = uChannel;
+            m_attribute.samplerate = nSamplesRate;
+            m_attribute.bitwide = wBitsPerSample;
+            SafeRelease(&pMediaType);
         }
         SafeRelease(&pAttributes);
     }
