@@ -28,7 +28,7 @@ private:
     HRESULT ChooseConversionFunction(REFGUID subtype);
 
 public:
-    int SetAttribute(void* attribute);
+    int SetSourceAttribute(void* attribute, AttributeType type);
     int SendFrame(MediaFrame * frame);
 
     int DrawFrame(MediaFrame * frame);

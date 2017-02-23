@@ -221,7 +221,7 @@ HRESULT AudioCapture::OnReadSample(
 
 int AudioCapture::AddSink(Sink * sink)
 {
-    if ((sink != NULL) && (sink->SetAttribute(&m_attribute) >= 0))
+    if ((sink != NULL) && (sink->SetSourceAttribute(&m_attribute, ATTRIBUTE_TYPE_AUDIO) >= 0))
     {
         m_Sinks.push_back(sink);
     }

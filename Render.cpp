@@ -567,7 +567,7 @@ HRESULT Render::TestCooperativeLevel()
 // public method
 //////////////////////////////////////////////////////////////////////////
 
-int Render::SetAttribute(void* attribute)
+int Render::SetSourceAttribute(void* attribute, AttributeType type)
 {
     if (attribute == NULL)
     {
