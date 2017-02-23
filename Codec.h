@@ -3,6 +3,9 @@
 #include "Sink.h"
 #include "MediaPacket.h"
 
+#include "x264/x264.h"
+#include "fdk-aac/aacenc_lib.h"
+
 struct VideoCodecAttribute 
 {
 };
@@ -34,5 +37,9 @@ public:
 private:
     int EncodeVideo(MediaFrame* frame, MediaPacket* packet);
     int EncodeAudio(MediaFrame* frame, MediaPacket* packet);
+
+private:
+    HANDLE_AACENCODER        m_audioEncoder;
+    x264_t*                  m_videoEncoder;
 };
 

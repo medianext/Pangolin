@@ -2,13 +2,24 @@
 #include "Codec.h"
 
 
-Codec::Codec()
+Codec::Codec() :
+    m_videoEncoder(NULL),
+    m_audioEncoder(NULL)
 {
 }
 
 
 Codec::~Codec()
 {
+    if (m_videoEncoder)
+    {
+        x264_encoder_close(m_videoEncoder);
+    }
+
+    if (m_audioEncoder)
+    {
+        aacEncClose(&m_audioEncoder);
+    }
 }
 
 
@@ -26,6 +37,9 @@ int Codec::SendFrame(MediaFrame * frame)
 
 int Codec::ConfigVideoCodec(VideoCodecAttribute* attribute)
 {
+    x264_param_t param;
+    x264_param_default(&param);
+    m_videoEncoder = x264_encoder_open(&param);
     return 0;
 }
 
