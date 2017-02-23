@@ -22,6 +22,7 @@ public:
     ~Codec();
 
 public:
+    int SetAttribute(void* attribute);
     int SendFrame(MediaFrame * frame);
 
     int ConfigVideoCodec(VideoCodecAttribute* attribute);

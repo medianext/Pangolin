@@ -2,6 +2,17 @@
 
 #include "Sink.h"
 
+
+typedef void(*IMAGE_TRANSFORM_FN)(
+    BYTE*       pDest,
+    LONG        lDestStride,
+    const BYTE* pSrc,
+    LONG        lSrcStride,
+    DWORD       dwWidthInPixels,
+    DWORD       dwHeightInPixels
+    );
+
+
 class Render :
     public Sink
 {
@@ -13,9 +24,13 @@ public:
     ~Render();
 private:
     Render(HWND hWnd);
+    HRESULT TestCooperativeLevel();
+    HRESULT ChooseConversionFunction(REFGUID subtype);
 
 public:
+    int SetAttribute(void* attribute);
     int SendFrame(MediaFrame * frame);
+
     int DrawFrame(MediaFrame * frame);
 
 private:
@@ -27,8 +42,12 @@ private:
 
     D3DPRESENT_PARAMETERS   m_d3dpp;
 
+    RECT                    m_rcCanvas;
+    RECT                    m_rcDest;
+
+    GUID                    m_subtype;
     D3DFORMAT               m_format;
-    UINT                    m_width;
-    UINT                    m_height;
+    
+    IMAGE_TRANSFORM_FN      m_convertFn;
 };
 

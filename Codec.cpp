@@ -12,6 +12,12 @@ Codec::~Codec()
 }
 
 
+int Codec::SetAttribute(void* attribute)
+{
+    return 0;
+}
+
+
 int Codec::SendFrame(MediaFrame * frame)
 {
     return 0;

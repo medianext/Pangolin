@@ -185,7 +185,7 @@ HRESULT AudioCapture::OnReadSample(
             hr = pSample->GetBufferByIndex(0, &pBuffer);
             if (SUCCEEDED(hr))
             {
-                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, 0, 0);
+                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, 0, 0, 0);
 
                 if (SUCCEEDED(hr)) {
                     vector<Sink*>::iterator iter = m_Sinks.begin();
@@ -221,7 +221,7 @@ HRESULT AudioCapture::OnReadSample(
 
 int AudioCapture::AddSink(Sink * sink)
 {
-    if (sink!=NULL)
+    if ((sink != NULL) && (sink->SetAttribute(&m_attribute) >= 0))
     {
         m_Sinks.push_back(sink);
     }

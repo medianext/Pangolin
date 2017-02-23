@@ -207,8 +207,8 @@ HRESULT VideoCapture::OnReadSample(
 			hr = pSample->GetBufferByIndex(0, &pBuffer);
 			if (SUCCEEDED(hr))
 			{
-                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, m_attribute.width, m_attribute.height);
-
+                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, m_attribute.width, m_attribute.height, m_attribute.stride);
+                frame.m_subtype = m_attribute.format;
 				if (SUCCEEDED(hr)) {
                     vector<Sink*>::iterator iter = m_Sinks.begin();
                     for (; iter != m_Sinks.end(); ++iter)
@@ -242,7 +242,7 @@ HRESULT VideoCapture::OnReadSample(
 
 int VideoCapture::AddSink(Sink * sink)
 {
-    if (sink != NULL)
+    if ( (sink != NULL) && (sink->SetAttribute(&m_attribute)>=0) )
     {
         m_Sinks.push_back(sink);
     }
