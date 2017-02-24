@@ -13,79 +13,112 @@ __forceinline BYTE Clip(int clr)
     return (BYTE)(clr < 0 ? 0 : (clr > 255 ? 255 : clr));
 }
 
-__forceinline RGBQUAD ConvertYCrCbToRGB(
-    int y,
-    int cr,
-    int cb
-    )
+typedef struct tagYUVQUAD {
+	BYTE    y;
+	BYTE    u;
+	BYTE    v;
+} YUVQUAD;
+
+__forceinline YUVQUAD ConvertRGBToYCrCb(
+	int r,
+	int g,
+	int b
+	)
 {
-    RGBQUAD rgbq;
+	YUVQUAD yuv;
 
-    int c = y - 16;
-    int d = cb - 128;
-    int e = cr - 128;
+	yuv.y = Clip(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16);
+	yuv.u = Clip(((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128);
+	yuv.v = Clip(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
 
-    rgbq.rgbRed = Clip((298 * c + 409 * e + 128) >> 8);
-    rgbq.rgbGreen = Clip((298 * c - 100 * d - 208 * e + 128) >> 8);
-    rgbq.rgbBlue = Clip((298 * c + 516 * d + 128) >> 8);
-
-    return rgbq;
+	return yuv;
 }
 
 
 //-------------------------------------------------------------------
 // TransformImage_RGB24 
 //
-// RGB-24 to RGB-32
+// RGB-24 to I420
 //-------------------------------------------------------------------
 
 static void TransformImage_RGB24(
-    BYTE*       pDest,
-    LONG        lDestStride,
+    BYTE*       pDst,
+    LONG        lDstStride,
     const BYTE* pSrc,
     LONG        lSrcStride,
     DWORD       dwWidthInPixels,
     DWORD       dwHeightInPixels
     )
 {
-    for (DWORD y = 0; y < dwHeightInPixels; y++)
-    {
-        RGBTRIPLE *pSrcPel = (RGBTRIPLE*)pSrc;
-        DWORD *pDestPel = (DWORD*)pDest;
+	BYTE* lpDstBitsY = pDst;
+	BYTE* lpDstBitsCb = lpDstBitsY + (dwHeightInPixels * lDstStride);
+	BYTE* lpDstBitsCr = lpDstBitsCb + (dwHeightInPixels * lDstStride) / 4;
 
-        for (DWORD x = 0; x < dwWidthInPixels; x++)
-        {
-            pDestPel[x] = D3DCOLOR_XRGB(
-                pSrcPel[x].rgbtRed,
-                pSrcPel[x].rgbtGreen,
-                pSrcPel[x].rgbtBlue
-                );
-        }
+	const BYTE* lpRGB = pSrc;
 
-        pSrc += lSrcStride;
-        pDest += lDestStride;
-    }
+	for (UINT x = 0; x < dwHeightInPixels; x++)
+	{
+		const BYTE* lpRGBSel = lpRGB;
+		for (UINT y = 0; y < dwWidthInPixels; y++)
+		{
+			int red = *(lpRGBSel++);
+			int green = *(lpRGBSel++);
+			int blue = *(lpRGBSel++);
+
+			YUVQUAD yuv = ConvertRGBToYCrCb(red, green, blue);
+			*(lpDstBitsY++) = yuv.y;
+			if (x%2==0 && y%2==0)
+			{
+				*(lpDstBitsCb++) = yuv.u;
+				*(lpDstBitsCr++) = yuv.v;
+			}
+		}
+
+		lpRGB += lSrcStride;
+	}
 }
 
 //-------------------------------------------------------------------
 // TransformImage_RGB32
 //
-// RGB-32 to RGB-32 
-//
-// Note: This function is needed to copy the image from system
-// memory to the Direct3D surface.
+// RGB-32 to I420
 //-------------------------------------------------------------------
 
 static void TransformImage_RGB32(
-    BYTE*       pDest,
-    LONG        lDestStride,
+    BYTE*       pDst,
+    LONG        lDstStride,
     const BYTE* pSrc,
     LONG        lSrcStride,
     DWORD       dwWidthInPixels,
     DWORD       dwHeightInPixels
     )
 {
-    MFCopyImage(pDest, lDestStride, pSrc, lSrcStride, dwWidthInPixels * 4, dwHeightInPixels);
+	BYTE* lpDstBitsY = pDst;
+	BYTE* lpDstBitsCb = lpDstBitsY + (dwHeightInPixels * lDstStride);
+	BYTE* lpDstBitsCr = lpDstBitsCb + (dwHeightInPixels * lDstStride) / 4;
+
+	const BYTE* lpRGB = pSrc;
+
+	for (UINT x = 0; x < dwHeightInPixels; x++)
+	{
+		const BYTE* lpRGBSel = lpRGB;
+		for (UINT y = 0; y < dwWidthInPixels; y++)
+		{
+			int red = *(lpRGBSel++);
+			int green = *(lpRGBSel++);
+			int blue = *(lpRGBSel++);
+
+			YUVQUAD yuv = ConvertRGBToYCrCb(red, green, blue);
+			*(lpDstBitsY++) = yuv.y;
+			if (x % 2 == 0 && y % 2 == 0)
+			{
+				*(lpDstBitsCb++) = yuv.u;
+				*(lpDstBitsCr++) = yuv.v;
+			}
+		}
+
+		lpRGB += lSrcStride;
+	}
 }
 
 //-------------------------------------------------------------------
@@ -95,18 +128,21 @@ static void TransformImage_RGB32(
 //-------------------------------------------------------------------
 
 static void TransformImage_YUY2(
-    BYTE*       pDest,
-    LONG        lDestStride,
+    BYTE*       pDst,
+    LONG        lDstStride,
     const BYTE* pSrc,
     LONG        lSrcStride,
     DWORD       dwWidthInPixels,
     DWORD       dwHeightInPixels
     )
 {
+	BYTE* lpDstBitsY = pDst;
+	BYTE* lpDstBitsCb = lpDstBitsY + (dwHeightInPixels * lDstStride);
+	BYTE* lpDstBitsCr = lpDstBitsCb + (dwHeightInPixels * lDstStride) / 4;
+
     for (DWORD y = 0; y < dwHeightInPixels; y++)
-    {
-        RGBQUAD *pDestPel = (RGBQUAD*)pDest;
-        WORD    *pSrcPel = (WORD*)pSrc;
+	{
+        WORD *pSrcPel = (WORD*)pSrc;
 
         for (DWORD x = 0; x < dwWidthInPixels; x += 2)
         {
@@ -117,12 +153,16 @@ static void TransformImage_YUY2(
             int y1 = (int)LOBYTE(pSrcPel[x + 1]);
             int v0 = (int)HIBYTE(pSrcPel[x + 1]);
 
-            pDestPel[x] = ConvertYCrCbToRGB(y0, v0, u0);
-            pDestPel[x + 1] = ConvertYCrCbToRGB(y1, v0, u0);
+			*(lpDstBitsY++) = y0;
+			*(lpDstBitsY++) = y1;
+			if (x % 2 == 0 && y % 2 == 0)
+			{
+				*(lpDstBitsCb++) = u0;
+				*(lpDstBitsCr++) = v0;
+			}
         }
 
         pSrc += lSrcStride;
-        pDest += lDestStride;
     }
 
 }
@@ -155,35 +195,39 @@ static void TransformImage_I420(
 
 static void TransformImage_NV12(
     BYTE* pDst,
-    LONG dstStride,
+    LONG lDstStride,
     const BYTE* pSrc,
-    LONG srcStride,
+    LONG lSrcStride,
     DWORD dwWidthInPixels,
     DWORD dwHeightInPixels
     )
 {
     BYTE* lpDstBitsY = pDst;
-    BYTE* lpDstBitsCb = lpDstBitsY + (dwHeightInPixels * srcStride);
-    BYTE* lpDstBitsCr = lpDstBitsCb + (dwHeightInPixels * srcStride) / 4;
+    BYTE* lpDstBitsCb = lpDstBitsY + (dwHeightInPixels * lDstStride);
+    BYTE* lpDstBitsCr = lpDstBitsCb + (dwHeightInPixels * lDstStride) / 4;
 
     const BYTE* lpSrcBitsY = pSrc;
-    const BYTE* lpSrcBitsCb = lpSrcBitsY + (dwHeightInPixels * srcStride);
+    const BYTE* lpSrcBitsCb = lpSrcBitsY + (dwHeightInPixels * lDstStride);
     const BYTE* lpSrcBitsCr = lpSrcBitsCb + 1;
 
-    for (UINT y = 0; y < dwHeightInPixels*dwHeightInPixels; y++)
-    {
-        lpDstBitsY[y] = lpSrcBitsY[y];
-    }
+	for (DWORD y = 0; y < dwHeightInPixels; y++)
+	{
+		WORD *pSrcPel = (WORD*)pSrc;
 
-    for (UINT y = 0; y < dwHeightInPixels*dwHeightInPixels/4; y++)
-    {
-        *lpDstBitsCb = *lpSrcBitsCb;
-        *lpDstBitsCr = *lpSrcBitsCr;
-        lpDstBitsCb++;
-        lpDstBitsCr++;
-        lpSrcBitsCb++;
-        lpSrcBitsCr = lpSrcBitsCb + 1;
-    }
+		for (DWORD x = 0; x < dwWidthInPixels; x += 2)
+		{
+
+			*(lpDstBitsY++) = *(lpSrcBitsY++);
+
+			if (x % 2 == 0 && y % 2 == 0)
+			{
+				*(lpDstBitsCb++) = *(lpSrcBitsCb++);
+				*(lpDstBitsCr++) = *(lpSrcBitsCb++);
+			}
+		}
+
+		pSrc += lSrcStride;
+	}
 }
 
 
@@ -291,7 +335,7 @@ int Codec::EncodeVideo(MediaFrame* frame, MediaPacket* packet)
         return -1;
     }
 
-    TransformImage_NV12(
+	TransformImage_RGB24(
         m_picture.img.plane[0],
         m_picture.img.i_stride[0],
         frame->m_pData,
