@@ -31,6 +31,10 @@ private:
     void ShowAudioParamTab(int bShow);
     void ShowCaptureParamTab(int bShow);
     void ShowAboutTab(int bShow);
+    void EnableAllControl(int bEnable);
+
+    void GetVideoAttribute(VideoCodecAttribute *pattr);
+    void GetAudioAttribute(AudioCodecAttribute *pattr);
 
 // й╣ож
 protected:
@@ -43,4 +47,5 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
     afx_msg void OnTabChange(NMHDR *pNMHDR, LRESULT *pResult);
+    afx_msg void OnBnClickedPush();
 };

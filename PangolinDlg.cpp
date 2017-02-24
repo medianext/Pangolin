@@ -31,6 +31,7 @@ BEGIN_MESSAGE_MAP(CPangolinDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
     ON_NOTIFY(TCN_SELCHANGE, IDC_SETTING, &CPangolinDlg::OnTabChange)
+    ON_BN_CLICKED(IDC_PUSH, &CPangolinDlg::OnBnClickedPush)
 END_MESSAGE_MAP()
 
 
@@ -385,4 +386,125 @@ void CPangolinDlg::OnTabChange(NMHDR *pNMHDR, LRESULT *pResult)
     }
 
     *pResult = 0;
+}
+
+void CPangolinDlg::EnableAllControl(int bEnable)
+{
+    CWnd* hChild = NULL;
+    hChild = this->GetDlgItem(IDC_RTMPURL);
+    hChild->EnableWindow(bEnable);
+
+    //视频参数
+    hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_VIDEO_FPS);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
+    hChild->EnableWindow(bEnable);
+
+    //音频参数
+    hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_AUDIO_BITRATE);
+    hChild->EnableWindow(bEnable);
+
+    //采集源
+    hChild = this->GetDlgItem(IDC_VIDEO_CAP);
+    hChild->EnableWindow(bEnable);
+    hChild = this->GetDlgItem(IDC_AUDIO_CAP);
+    hChild->EnableWindow(bEnable);
+}
+
+
+void CPangolinDlg::GetVideoAttribute(VideoCodecAttribute *pattr)
+{
+    if (pattr!=NULL)
+    {
+        int sel = 0;
+        CWnd* hChild = NULL;
+        CString str;
+
+        hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
+        sel = ((CComboBox*)hChild)->GetCurSel();
+        DWORD data = ((CComboBox*)hChild)->GetItemData(sel);
+        pattr->height = LOWINT32(data);
+        pattr->width = HIGHINT32(data);
+
+        hChild = this->GetDlgItem(IDC_VIDEO_FPS);
+        hChild->GetWindowText(str);
+        pattr->fps = _ttoi(str);
+
+        hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
+        sel = ((CComboBox*)hChild)->GetCurSel();
+        pattr->profile = sel;
+
+        hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
+        hChild->GetWindowText(str);
+        pattr->bitrate = _ttoi(str);
+    }
+}
+
+
+void CPangolinDlg::GetAudioAttribute(AudioCodecAttribute *pattr)
+{
+    if (pattr != NULL)
+    {
+        int sel = 0;
+        CWnd* hChild = NULL;
+        CString str;
+
+        hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+
+        hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
+
+        hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
+        sel = ((CComboBox*)hChild)->GetCurSel();
+        pattr->profile = sel;
+
+        hChild = this->GetDlgItem(IDC_AUDIO_BITRATE);
+        hChild->GetWindowText(str);
+        pattr->bitrate = _ttoi(str);
+
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// Control Event Handle
+//////////////////////////////////////////////////////////////////////////
+
+void CPangolinDlg::OnBnClickedPush()
+{
+    static int curState = 0;
+    if (curState == 0)
+    {
+        CWnd* hChild = this->GetDlgItem(IDC_PUSH);
+        hChild->SetWindowText(TEXT("停止推流"));
+        curState = 1;
+        this->EnableAllControl(FALSE);
+
+        VideoCodecAttribute v_attribute;
+        this->GetVideoAttribute(&v_attribute);
+        codec->SetVideoCodecAttribute(&v_attribute);
+
+        AudioCodecAttribute a_attribute;
+        this->GetAudioAttribute(&a_attribute);
+        codec->SetAudioCodecAttribute(&a_attribute);
+
+        codec->Start();
+    }
+    else if (curState == 1)
+    {
+        CWnd* hChild = this->GetDlgItem(IDC_PUSH);
+        hChild->SetWindowText(TEXT("开始推流"));
+        curState = 0;
+        this->EnableAllControl(TRUE);
+        codec->Stop();
+    }
 }
