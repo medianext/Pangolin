@@ -76,5 +76,6 @@ private:
 
     HANDLE_AACENCODER        m_audioEncoder;
     x264_t*                  m_videoEncoder;
+    x264_picture_t           m_picture;
 };
 

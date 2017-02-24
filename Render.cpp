@@ -54,7 +54,7 @@ __forceinline RGBQUAD ConvertYCrCbToRGB(
 // RGB-24 to RGB-32
 //-------------------------------------------------------------------
 
-void TransformImage_RGB24(
+static void TransformImage_RGB24(
     BYTE*       pDest,
     LONG        lDestStride,
     const BYTE* pSrc,
@@ -91,7 +91,7 @@ void TransformImage_RGB24(
 // memory to the Direct3D surface.
 //-------------------------------------------------------------------
 
-void TransformImage_RGB32(
+static void TransformImage_RGB32(
     BYTE*       pDest,
     LONG        lDestStride,
     const BYTE* pSrc,
@@ -109,7 +109,7 @@ void TransformImage_RGB32(
 // YUY2 to RGB-32
 //-------------------------------------------------------------------
 
-void TransformImage_YUY2(
+static void TransformImage_YUY2(
     BYTE*       pDest,
     LONG        lDestStride,
     const BYTE* pSrc,
@@ -149,7 +149,7 @@ void TransformImage_YUY2(
 // I420 to RGB-32
 //-------------------------------------------------------------------
 
-void TransformImage_I420(
+static void TransformImage_I420(
     BYTE* pDst,
     LONG dstStride,
     const BYTE* pSrc,
@@ -228,7 +228,7 @@ void TransformImage_I420(
 // NV12 to RGB-32
 //-------------------------------------------------------------------
 
-void TransformImage_NV12(
+static void TransformImage_NV12(
     BYTE* pDst,
     LONG dstStride,
     const BYTE* pSrc,
@@ -317,7 +317,7 @@ struct ConversionFunction
 };
 
 
-ConversionFunction   g_FormatConversions[] =
+static ConversionFunction g_FormatConversions[] =
 {
     { MFVideoFormat_RGB32, TransformImage_RGB32 },
     { MFVideoFormat_RGB24, TransformImage_RGB24 },
