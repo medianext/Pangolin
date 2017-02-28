@@ -19,6 +19,9 @@
 #define CODEC_STATUS_PAUSE  2
 #define CODEC_STATUS_START  3
 
+#define MAX_VIDEO_FRAME 5
+#define MAX_VIDEO_PACKET 20
+
 struct VideoCodecAttribute 
 {
 	int profile;
@@ -55,18 +58,39 @@ public:
 	int Pause();
 	int Stop();
 
+	int GetVideoPacketCount();
+	int GetAudioPacketCount();
+
     MediaPacket* GetVideoPacket();
     MediaPacket* GetAudioPacket();
 
 private:
+	HRESULT ChooseConversionFunction(REFGUID subtype);
+
+	int InitCodec();
+	int UninitCodec();
+
+	int AllocMemory();
+	int FreeMemory();
+
+	x264_picture_t* PopVideoPicture();
+	void PushVideoPicture(x264_picture_t* pic);
+
+	MediaPacket* PopVideoPacket();
+	void PushVideoPacket(MediaPacket* packet);
+
 	int ConfigVideoCodec();
 	int ConfigAudioCodec();
 
-    int EncodeVideo(MediaFrame* frame, MediaPacket* packet);
-    int EncodeAudio(MediaFrame* frame, MediaPacket* packet);
+	static DWORD WINAPI VideoEncodecThread(LPVOID lpParam);
+	static DWORD WINAPI AudioEncodecThread(LPVOID lpParam);
 
 private:
 	int                      m_Status;
+	int                      m_QuitCmd;
+
+	HANDLE                   m_videoThread;
+	HANDLE                   m_audioThread;
 
 	VideoCaptureAttribute    m_videoSrcAttribute;
 	AudioCaptureAttribute    m_audioSrcAttribute;
@@ -76,6 +100,10 @@ private:
 
     HANDLE_AACENCODER        m_audioEncoder;
     x264_t*                  m_videoEncoder;
-    x264_picture_t           m_picture;
+
+	IMAGE_TRANSFORM_FN      m_convertFn;
+
+	queue<x264_picture_t *> videoFrameQueue;
+	queue<MediaPacket *> videoPacketQueue;
 };
 

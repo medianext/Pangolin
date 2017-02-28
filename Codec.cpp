@@ -275,7 +275,6 @@ Codec::~Codec()
     if (m_videoEncoder)
     {
         x264_encoder_close(m_videoEncoder);
-        x264_picture_clean(&m_picture);
     }
 
     if (m_audioEncoder)
@@ -288,6 +287,23 @@ Codec::~Codec()
 //////////////////////////////////////////////////////////////////////////
 // private method
 //////////////////////////////////////////////////////////////////////////
+
+HRESULT Codec::ChooseConversionFunction(REFGUID subtype)
+{
+	m_convertFn = NULL;
+
+	for (DWORD i = 0; i < g_cFormats; i++)
+	{
+		if (g_FormatConversions[i].subtype == subtype)
+		{
+			m_convertFn = g_FormatConversions[i].xform;
+			return S_OK;
+		}
+	}
+
+	return MF_E_INVALIDMEDIATYPE;
+}
+
 
 int Codec::ConfigVideoCodec()
 {
@@ -315,9 +331,6 @@ int Codec::ConfigVideoCodec()
 
     x264_encoder_parameters(m_videoEncoder, &param);
 
-    x264_picture_init(&m_picture);
-    ret = x264_picture_alloc(&m_picture, X264_CSP_I420, m_videoAttribute.width, m_videoAttribute.height);
-
 	return 0;
 }
 
@@ -327,35 +340,135 @@ int Codec::ConfigAudioCodec()
 	return 0;
 }
 
-
-int Codec::EncodeVideo(MediaFrame* frame, MediaPacket* packet)
+int Codec::AllocMemory()
 {
-    if (m_videoEncoder==NULL || frame==NULL)
-    {
-        return -1;
-    }
+	return 0;
+}
 
-	TransformImage_RGB24(
-        m_picture.img.plane[0],
-        m_picture.img.i_stride[0],
-        frame->m_pData,
-        frame->m_stride,
-        frame->m_width,
-        frame->m_height
-        );
 
-    x264_picture_t pic_out;
-    x264_nal_t *nal;
-    int i_nal;
-    int i_frame_size = 0;
+int Codec::FreeMemory()
+{
+	while (!videoFrameQueue.empty())
+	{
+		x264_picture_t *pic = videoFrameQueue.front();
+		videoFrameQueue.pop();
+		x264_picture_clean(pic);
+		delete pic;
+	}
 
-    i_frame_size = x264_encoder_encode(m_videoEncoder, &nal, &i_nal, &m_picture, &pic_out);
+	while (!videoPacketQueue.empty())
+	{
+		MediaPacket* packet = videoPacketQueue.front();
+		videoPacketQueue.pop();
+		delete packet;
+	}
+	return 0;
+}
+
+
+x264_picture_t* Codec::PopVideoPicture()
+{
+	x264_picture_t *pic = NULL;
+	if (!videoFrameQueue.empty())
+	{
+		pic = videoFrameQueue.front();
+		videoFrameQueue.pop();
+	}
+	return pic;
+}
+
+
+void Codec::PushVideoPicture(x264_picture_t* pic)
+{
+	if (pic)
+	{
+		videoFrameQueue.push(pic);
+	}
+}
+
+
+MediaPacket* Codec::PopVideoPacket()
+{
+	MediaPacket* packet = NULL;
+	if (!videoPacketQueue.empty())
+	{
+		packet = videoPacketQueue.front();
+		videoPacketQueue.pop();
+	}
+	return packet;
+}
+
+
+void Codec::PushVideoPacket(MediaPacket* packet)
+{
+	if (packet!=NULL)
+	{
+		videoPacketQueue.push(packet);
+	}
+}
+
+
+int Codec::InitCodec()
+{
+	ConfigVideoCodec();
+	ConfigAudioCodec();
+	AllocMemory();
+	return 0;
+}
+
+
+int Codec::UninitCodec()
+{
+	FreeMemory();
+	return 0;
+}
+
+
+DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
+{
+	Codec* codec = (Codec*)lpParam;
+
+	while (1)
+	{
+		if (codec->m_QuitCmd==1)
+		{ 
+			break;
+		}
+
+		x264_picture_t* pic = codec->PopVideoPicture();
+		if (pic == NULL)
+		{
+			continue;
+		}
+
+		x264_picture_t pic_out;
+		x264_nal_t *nal;
+		int i_nal;
+		int i_frame_size = 0;
+
+		i_frame_size = x264_encoder_encode(codec->m_videoEncoder, &nal, &i_nal, pic, &pic_out);
+		if (i_frame_size > 0)
+		{
+			OutputDebugString(TEXT("get video packet.\n"));
+			MediaPacket* packet = new MediaPacket(PACKET_TYPE_VIDEO, i_frame_size);
+			int size = 0;
+			for (int i = 0; i < i_nal; ++i)
+			{
+				memcpy(&(packet->m_pData[size]), nal[i].p_payload, nal[i].i_payload);
+				size += nal[i].i_payload;
+			}
+			codec->PushVideoPacket(packet);
+		}
+
+		x264_picture_clean(pic);
+		delete pic;
+	}
 
 	return 0;
 }
 
 
-int Codec::EncodeAudio(MediaFrame* frame, MediaPacket* packet)
+DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
 {
 	return 0;
 }
@@ -370,7 +483,8 @@ int Codec::SetSourceAttribute(void* attribute, AttributeType type)
 	if (type == ATTRIBUTE_TYPE_VIDEO)
 	{
 		VideoCaptureAttribute *pattr = (VideoCaptureAttribute *)attribute;
-		m_videoSrcAttribute = *pattr;
+		m_videoSrcAttribute = *pattr; 
+		ChooseConversionFunction(pattr->format);
 
 	}
 	else if (type == ATTRIBUTE_TYPE_AUDIO)
@@ -384,17 +498,52 @@ int Codec::SetSourceAttribute(void* attribute, AttributeType type)
 
 int Codec::SendFrame(MediaFrame * frame)
 {
-    if (frame == NULL) {
+    if (frame == NULL && m_Status!= CODEC_STATUS_START) {
         return -1;
     }
 
+	int ret = 0;
+
     if (frame->m_FrameType==FRAME_TYPE_VIDEO)
-    {
-        this->EncodeVideo(frame, NULL);
+	{
+
+		if (m_convertFn == NULL)
+		{
+			return MF_E_INVALIDMEDIATYPE;
+		}
+
+		if (videoFrameQueue.size()>=MAX_VIDEO_FRAME || videoPacketQueue.size()>=MAX_VIDEO_PACKET)
+		{
+			OutputDebugString(TEXT("buffer is full!\n"));
+			return -1;
+		}
+
+		x264_picture_t* pic = new x264_picture_t;
+		if (pic == NULL)
+		{
+			return -1;
+		}
+		x264_picture_init(pic);
+		ret = x264_picture_alloc(pic, X264_CSP_I420, m_videoAttribute.width, m_videoAttribute.height);
+		if (ret != 0)
+		{
+			delete pic;
+			return -1;
+		}
+
+		m_convertFn(
+			pic->img.plane[0],
+			pic->img.i_stride[0],
+			frame->m_pData,
+			frame->m_stride,
+			frame->m_width,
+			frame->m_height
+			);
+
+		PushVideoPicture(pic);
     } 
     else if(frame->m_FrameType == FRAME_TYPE_AUDIO)
     {
-        this->EncodeAudio(frame, NULL);
     }
 
 	return 0;
@@ -427,7 +576,10 @@ int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
 
 int Codec::Start()
 {
-    ConfigVideoCodec();
+	InitCodec();
+	m_QuitCmd = 0;
+	m_videoThread = CreateThread(NULL, 0, VideoEncodecThread, this, 0, NULL);
+
 	return 0;
 }
 
@@ -440,13 +592,17 @@ int Codec::Pause()
 
 int Codec::Stop()
 {
+
+	m_QuitCmd = 1;
+	WaitForSingleObject(m_videoThread, INFINITE);
+	UninitCodec();
 	return 0;
 }
 
 
 MediaPacket* Codec::GetVideoPacket()
 {
-    return NULL;
+    return PopVideoPacket();
 }
 
 
@@ -454,3 +610,16 @@ MediaPacket* Codec::GetAudioPacket()
 {
     return NULL;
 }
+
+
+int Codec::GetVideoPacketCount()
+{
+	return videoPacketQueue.size();
+}
+
+
+int Codec::GetAudioPacketCount()
+{
+	return 0;
+}
+

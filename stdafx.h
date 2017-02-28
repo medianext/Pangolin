@@ -46,6 +46,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <queue>
 using namespace std;
 
 template <class T> void SafeRelease(T **ppT)
