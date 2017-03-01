@@ -22,6 +22,9 @@
 #define MAX_VIDEO_FRAME 5
 #define MAX_VIDEO_PACKET 20
 
+#define MAX_AUDIO_FRAME 5
+#define MAX_AUDIO_PACKET 20
+
 struct VideoCodecAttribute 
 {
 	int profile;
@@ -82,6 +85,12 @@ private:
 	MediaPacket* PopVideoPacket();
 	void PushVideoPacket(MediaPacket* packet);
 
+	AACENC_BufDesc* PopAudioFrame();
+	void PushAudioFrame(AACENC_BufDesc* pic);
+
+	MediaPacket* PopAudioPacket();
+	void PushAudioPacket(MediaPacket* packet);
+
 	int ConfigVideoCodec();
 	int ConfigAudioCodec();
 
@@ -108,5 +117,8 @@ private:
 
 	queue<x264_picture_t *> videoFrameQueue;
 	queue<MediaPacket *> videoPacketQueue;
+
+	queue<AACENC_BufDesc *> audioFrameQueue;
+	queue<MediaPacket *> audioPacketQueue;
 };
 

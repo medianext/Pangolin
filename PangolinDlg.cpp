@@ -104,7 +104,7 @@ BOOL CPangolinDlg::OnInitDialog()
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);
     hComBox->SetCurSel(0);
     hEdit = (CEdit*)this->GetDlgItem(IDC_AUDIO_BITRATE);
-    hEdit->SetWindowTextW(L"64");
+    hEdit->SetWindowTextW(L"64000");
 
 
 	std::vector<WCHAR *> strList;
@@ -459,9 +459,19 @@ void CPangolinDlg::GetAudioAttribute(AudioCodecAttribute *pattr)
         CWnd* hChild = NULL;
         CString str;
 
-        hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+		hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+		hChild->GetWindowText(str);
+		pattr->samplerate = _ttoi(str);
 
-        hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
+		hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
+		sel = ((CComboBox*)hChild)->GetCurSel();
+		if (sel==0)
+		{
+			pattr->channel = 2;
+		}
+		else {
+			pattr->channel = 1;
+		}
 
         hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
         sel = ((CComboBox*)hChild)->GetCurSel();
@@ -489,11 +499,11 @@ void CPangolinDlg::OnBnClickedPush()
         curState = 1;
         this->EnableAllControl(FALSE);
 
-        VideoCodecAttribute v_attribute;
+		VideoCodecAttribute v_attribute = {0};
         this->GetVideoAttribute(&v_attribute);
         codec->SetVideoCodecAttribute(&v_attribute);
 
-        AudioCodecAttribute a_attribute;
+		AudioCodecAttribute a_attribute = {0};
         this->GetAudioAttribute(&a_attribute);
         codec->SetAudioCodecAttribute(&a_attribute);
 

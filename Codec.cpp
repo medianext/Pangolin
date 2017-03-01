@@ -337,7 +337,8 @@ int Codec::ConfigVideoCodec()
 
 int Codec::ConfigAudioCodec()
 {
-    if (aacEncOpen(&m_audioEncoder, 0, m_audioAttribute.channel) != AACENC_OK) {
+	if (aacEncOpen(&m_audioEncoder, 0, m_audioAttribute.channel) != AACENC_OK) {
+		OutputDebugString(TEXT("Open AAC encode handle failed!\n"));
         return -1;
     }
     int aot = 2;
@@ -368,6 +369,26 @@ int Codec::ConfigAudioCodec()
         OutputDebugString(TEXT("Unable to set the channel mode\n"));
         return -1;
     }
+
+	if (aacEncoder_SetParam(m_audioEncoder, AACENC_BITRATEMODE, 0) != AACENC_OK) {
+		OutputDebugString(TEXT("Unable to set the bitrate mode\n"));
+		return -1;
+	}
+
+	if (aacEncoder_SetParam(m_audioEncoder, AACENC_BITRATE, m_audioAttribute.bitrate) != AACENC_OK) {
+		OutputDebugString(TEXT("Unable to set the bitrate\n"));
+		return -1;
+	}
+	if (aacEncEncode(m_audioEncoder, NULL, NULL, NULL, NULL) != AACENC_OK) {
+		OutputDebugString(TEXT("Unable to initialize the encoder\n"));
+		return 1;
+	}
+	AACENC_InfoStruct info = { 0 };
+	if (aacEncInfo(m_audioEncoder, &info) != AACENC_OK) {
+		OutputDebugString(TEXT("Unable to get the encoder info\n"));
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -435,6 +456,48 @@ void Codec::PushVideoPacket(MediaPacket* packet)
 	if (packet!=NULL)
 	{
 		videoPacketQueue.push(packet);
+	}
+}
+
+
+AACENC_BufDesc* Codec::PopAudioFrame()
+{
+	AACENC_BufDesc *frame = NULL;
+	if (!audioFrameQueue.empty())
+	{
+		frame = audioFrameQueue.front();
+		audioFrameQueue.pop();
+	}
+	return frame;
+}
+
+
+void Codec::PushAudioFrame(AACENC_BufDesc* frame)
+{
+	if (frame)
+	{
+		audioFrameQueue.push(frame);
+	}
+}
+
+
+MediaPacket* Codec::PopAudioPacket()
+{
+	MediaPacket* packet = NULL;
+	if (!audioPacketQueue.empty())
+	{
+		packet = audioPacketQueue.front();
+		audioPacketQueue.pop();
+	}
+	return packet;
+}
+
+
+void Codec::PushAudioPacket(MediaPacket* packet)
+{
+	if (packet != NULL)
+	{
+		audioPacketQueue.push(packet);
 	}
 }
 
@@ -584,7 +647,31 @@ int Codec::SendFrame(MediaFrame * frame)
 		PushVideoPicture(pic);
     } 
     else if(frame->m_FrameType == FRAME_TYPE_AUDIO)
-    {
+	{
+
+		if (audioFrameQueue.size() >= MAX_AUDIO_FRAME || audioPacketQueue.size() >= MAX_AUDIO_PACKET)
+		{
+			OutputDebugString(TEXT("buffer is full!\n"));
+			return -1;
+		}
+
+		AACENC_BufDesc* sameple = new AACENC_BufDesc;
+		if (frame == NULL)
+		{
+			return -1;
+		}
+		int in_identifier = IN_AUDIO_DATA;
+		int in_size = frame->m_dataSize;
+		int in_elem_size = 2;
+		void * buf = malloc(in_size);
+
+		sameple->numBufs = 1;
+		sameple->bufferIdentifiers = &in_identifier;
+		sameple->bufSizes = &in_size;
+		sameple->bufs = &buf;
+		sameple->bufElSizes = &in_elem_size;
+
+		PushAudioFrame(sameple);
     }
 
 	return 0;
@@ -597,7 +684,7 @@ int Codec::SendFrame(MediaFrame * frame)
 
 int Codec::SetVideoCodecAttribute(VideoCodecAttribute* attribute)
 {
-    if (attribute!=NULL)
+    if (attribute != NULL)
     {
         m_videoAttribute = *attribute;
     }
@@ -607,7 +694,7 @@ int Codec::SetVideoCodecAttribute(VideoCodecAttribute* attribute)
 
 int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
 {
-    if (attribute == NULL)
+    if (attribute != NULL)
     {
         m_audioAttribute = *attribute;
     }

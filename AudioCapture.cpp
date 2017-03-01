@@ -90,7 +90,7 @@ AudioCapture::AudioCapture(void * priv) :
         {
         }
         IMFMediaType * pMediaType = NULL;
-        hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pMediaType);
+        hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &pMediaType);
         if (SUCCEEDED(hr))
         {
 
