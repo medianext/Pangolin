@@ -34,8 +34,11 @@ struct VideoCodecAttribute
 
 struct AudioCodecAttribute
 {
-	int profile;
-	int bitrate;
+    int profile;
+    int samplerate;
+    int channel;
+    int bitwide;
+    int bitrate;
 };
 
 

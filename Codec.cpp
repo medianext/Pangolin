@@ -337,6 +337,37 @@ int Codec::ConfigVideoCodec()
 
 int Codec::ConfigAudioCodec()
 {
+    if (aacEncOpen(&m_audioEncoder, 0, m_audioAttribute.channel) != AACENC_OK) {
+        return -1;
+    }
+    int aot = 2;
+    switch (m_audioAttribute.profile)
+    {
+    case 0: aot = 2;  break;
+    case 1: aot = 5;  break;
+    case 2: aot = 29; break;
+    }
+    if (aacEncoder_SetParam(m_audioEncoder, AACENC_AOT, aot) != AACENC_OK) {
+        OutputDebugString(TEXT("Unable to set the AOT\n"));
+        return -1;
+    }
+    if (aacEncoder_SetParam(m_audioEncoder, AACENC_SAMPLERATE, m_audioAttribute.samplerate) != AACENC_OK) {
+        OutputDebugString(TEXT("Unable to set the SAMPLERATE\n"));
+        return -1;
+    }
+    int mode = MODE_1;
+    switch (m_audioAttribute.channel) {
+    case 1: mode = MODE_1;       break;
+    case 2: mode = MODE_2;       break;
+    case 3: mode = MODE_1_2;     break;
+    case 4: mode = MODE_1_2_1;   break;
+    case 5: mode = MODE_1_2_2;   break;
+    case 6: mode = MODE_1_2_2_1; break;
+    }
+    if (aacEncoder_SetParam(m_audioEncoder, AACENC_CHANNELMODE, mode) != AACENC_OK) {
+        OutputDebugString(TEXT("Unable to set the channel mode\n"));
+        return -1;
+    }
 	return 0;
 }
 
@@ -470,6 +501,16 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 
 DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
 {
+    Codec* codec = (Codec*)lpParam;
+
+    while (1)
+    {
+        if (codec->m_QuitCmd == 1)
+        {
+            break;
+        }
+    }
+
 	return 0;
 }
 
@@ -578,7 +619,8 @@ int Codec::Start()
 {
 	InitCodec();
 	m_QuitCmd = 0;
-	m_videoThread = CreateThread(NULL, 0, VideoEncodecThread, this, 0, NULL);
+    m_videoThread = CreateThread(NULL, 0, VideoEncodecThread, this, 0, NULL);
+    m_audioThread = CreateThread(NULL, 0, AudioEncodecThread, this, 0, NULL);
 
 	return 0;
 }
@@ -594,7 +636,8 @@ int Codec::Stop()
 {
 
 	m_QuitCmd = 1;
-	WaitForSingleObject(m_videoThread, INFINITE);
+    WaitForSingleObject(m_videoThread, INFINITE);
+    WaitForSingleObject(m_audioThread, INFINITE);
 	UninitCodec();
 	return 0;
 }
