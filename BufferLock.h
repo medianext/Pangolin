@@ -72,7 +72,10 @@ public:
             hr = m_pBuffer->Lock(&pData, NULL, NULL);
             if (SUCCEEDED(hr))
             {
-                *plStride = lDefaultStride;
+                if (plStride)
+                {
+                    *plStride = lDefaultStride;
+                }
                 if (lDefaultStride < 0)
                 {
                     // Bottom-up orientation. Return a pointer to the start of the

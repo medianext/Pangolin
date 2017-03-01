@@ -185,7 +185,8 @@ HRESULT AudioCapture::OnReadSample(
             hr = pSample->GetBufferByIndex(0, &pBuffer);
             if (SUCCEEDED(hr))
             {
-                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, 0, 0, 0);
+                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, m_attribute.samplerate, m_attribute.channel, m_attribute.bitwide);
+                frame.m_subtype = m_attribute.format;
 
                 if (SUCCEEDED(hr)) {
                     vector<Sink*>::iterator iter = m_Sinks.begin();

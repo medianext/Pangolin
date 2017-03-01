@@ -206,9 +206,10 @@ HRESULT VideoCapture::OnReadSample(
             // Get the video frame buffer from the sample.
 			hr = pSample->GetBufferByIndex(0, &pBuffer);
 			if (SUCCEEDED(hr))
-			{
+            {
                 MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, m_attribute.width, m_attribute.height, m_attribute.stride);
                 frame.m_subtype = m_attribute.format;
+
 				if (SUCCEEDED(hr)) {
                     vector<Sink*>::iterator iter = m_Sinks.begin();
                     for (; iter != m_Sinks.end(); ++iter)

@@ -15,11 +15,20 @@ public:
     ~MediaFrame();
 
 public:
+    // common filed
     FrameType m_FrameType;
     GUID  m_subtype;
     BYTE  *m_pData;
+    DWORD m_dataSize;
+
+    // video specific filed
     int m_stride;
     int m_width;
     int m_height;
+
+    // audio specific filed
+    int m_samplerate;
+    int m_channels;
+    int m_bitwide;
 };
 
