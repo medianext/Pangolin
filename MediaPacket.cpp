@@ -3,15 +3,17 @@
 
 
 MediaPacket::MediaPacket() :
-	m_pData(NULL)
+	m_pData(NULL),
+    m_dataSize(0)
 {
 }
 
 
-MediaPacket::MediaPacket(PacketType type, int dataSize)
+MediaPacket::MediaPacket(PacketType type, int dataSize) :
+    m_PacketType(type),
+    m_dataSize(dataSize)
 {
 	m_pData = new BYTE[dataSize];
-	m_PacketType = type;
 }
 
 

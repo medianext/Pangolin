@@ -144,7 +144,7 @@ static void TransformImage_YUY2(
 	{
         WORD *pSrcPel = (WORD*)pSrc;
 
-        for (DWORD x = 0; x < dwWidthInPixels; x += 2)
+        for (DWORD x = 0; x < dwWidthInPixels; x++)
         {
             // Byte order is U0 Y0 V0 Y1
 
@@ -208,21 +208,21 @@ static void TransformImage_NV12(
 
     const BYTE* lpSrcBitsY = pSrc;
     const BYTE* lpSrcBitsCb = lpSrcBitsY + (dwHeightInPixels * lDstStride);
-    const BYTE* lpSrcBitsCr = lpSrcBitsCb + 1;
+    //const BYTE* lpSrcBitsCr = lpSrcBitsCb + 1;
 
 	for (DWORD y = 0; y < dwHeightInPixels; y++)
 	{
 		WORD *pSrcPel = (WORD*)pSrc;
 
-		for (DWORD x = 0; x < dwWidthInPixels; x += 2)
+		for (DWORD x = 0; x < dwWidthInPixels; x++ )
 		{
 
 			*(lpDstBitsY++) = *(lpSrcBitsY++);
 
 			if (x % 2 == 0 && y % 2 == 0)
 			{
-				*(lpDstBitsCb++) = *(lpSrcBitsCb++);
-				*(lpDstBitsCr++) = *(lpSrcBitsCb++);
+                *(lpDstBitsCb++) =  *(lpSrcBitsCb++);
+                *(lpDstBitsCr++) =  *(lpSrcBitsCb++);
 			}
 		}
 
@@ -469,7 +469,7 @@ MediaPacket* Codec::PopVideoPacket()
 void Codec::PushVideoPacket(MediaPacket* packet)
 {
 	if (packet!=NULL)
-	{
+    {
 		videoPacketQueue.push(packet);
 	}
 }
@@ -548,7 +548,8 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 
 		x264_picture_t* pic = codec->PopVideoPicture();
 		if (pic == NULL)
-		{
+        {
+            Sleep(10);
 			continue;
 		}
 
@@ -568,7 +569,8 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 				memcpy(&(packet->m_pData[size]), nal[i].p_payload, nal[i].i_payload);
 				size += nal[i].i_payload;
 			}
-			codec->PushVideoPacket(packet);
+
+            codec->PushVideoPacket(packet);
 		}
 
 		x264_picture_clean(pic);
@@ -631,6 +633,7 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
         MediaFrame* frame = codec->PopAudioFrame();
         if (frame == NULL)
         {
+            Sleep(10);
             continue;
         }
 
@@ -651,6 +654,7 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
         {
             MediaPacket* packet = new MediaPacket(PACKET_TYPE_AUDIO, size);
             memcpy(packet->m_pData, outbuf.bufs[0], size);
+
             codec->PushAudioPacket(packet);
         }
         free(frame->m_pData);
@@ -741,6 +745,7 @@ int Codec::SendFrame(MediaFrame * frame)
 		}
 
         MediaFrame* sample = new MediaFrame();
+        sample->m_FrameType = frame->m_FrameType;
         sample->m_pData = (BYTE*)malloc(frame->m_dataSize);
         sample->m_dataSize = frame->m_dataSize;
 

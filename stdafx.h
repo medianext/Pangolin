@@ -43,6 +43,7 @@
 
 #include <shlwapi.h>
 
+#include <fstream>
 #include <vector>
 #include <string>
 #include <set>

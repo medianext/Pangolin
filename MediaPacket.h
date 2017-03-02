@@ -15,7 +15,8 @@ public:
 	~MediaPacket();
 
 public:
-	PacketType m_PacketType;
+    PacketType m_PacketType;
+    int   m_dataSize;
 	BYTE  *m_pData;
 };
 
