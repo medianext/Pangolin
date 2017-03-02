@@ -265,7 +265,8 @@ const DWORD   g_cFormats = ARRAYSIZE(g_FormatConversions);
 
 Codec::Codec() :
     m_videoEncoder(NULL),
-    m_audioEncoder(NULL)
+    m_audioEncoder(NULL),
+    m_Status(0)
 {
 }
 
@@ -413,7 +414,21 @@ int Codec::FreeMemory()
 		MediaPacket* packet = videoPacketQueue.front();
 		videoPacketQueue.pop();
 		delete packet;
-	}
+    }
+
+    while (!audioFrameQueue.empty())
+    {
+        MediaFrame *frame = audioFrameQueue.front();
+        audioFrameQueue.pop();
+        delete frame;
+    }
+
+    while (!audioPacketQueue.empty())
+    {
+        MediaPacket* packet = audioPacketQueue.front();
+        audioPacketQueue.pop();
+        delete packet;
+    }
 	return 0;
 }
 
@@ -460,9 +475,9 @@ void Codec::PushVideoPacket(MediaPacket* packet)
 }
 
 
-AACENC_BufDesc* Codec::PopAudioFrame()
+MediaFrame* Codec::PopAudioFrame()
 {
-	AACENC_BufDesc *frame = NULL;
+    MediaFrame *frame = NULL;
 	if (!audioFrameQueue.empty())
 	{
 		frame = audioFrameQueue.front();
@@ -472,7 +487,7 @@ AACENC_BufDesc* Codec::PopAudioFrame()
 }
 
 
-void Codec::PushAudioFrame(AACENC_BufDesc* frame)
+void Codec::PushAudioFrame(MediaFrame* frame)
 {
 	if (frame)
 	{
@@ -513,6 +528,8 @@ int Codec::InitCodec()
 
 int Codec::UninitCodec()
 {
+    aacEncClose(&m_audioEncoder);
+    x264_encoder_close(m_videoEncoder);
 	FreeMemory();
 	return 0;
 }
@@ -566,13 +583,81 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
 {
     Codec* codec = (Codec*)lpParam;
 
+    AACENC_InfoStruct info = { 0 };
+    if (aacEncInfo(codec->m_audioEncoder, &info) != AACENC_OK) {
+        OutputDebugString(TEXT("Unable to get the encoder info\n"));
+        return 1;
+    }
+
+    AACENC_BufDesc inbuf = { 0 };
+    void* pinbuf = NULL;
+    int in_size = info.maxOutBufBytes;
+    int in_identifier = IN_AUDIO_DATA;
+    int in_elem_size = 2;
+
+    inbuf.numBufs = 1;
+    inbuf.bufferIdentifiers = &in_identifier;
+    inbuf.bufElSizes = &in_elem_size;
+    inbuf.bufs = &pinbuf;
+    inbuf.bufSizes = &in_size;
+
+    AACENC_BufDesc outbuf = { 0 };
+    void* poutbuf = malloc(info.maxOutBufBytes);
+    if (poutbuf==NULL)
+    {
+        return -1;
+    }
+    int out_size = info.maxOutBufBytes;
+    int out_elem_size = 1;
+    int out_identifier = OUT_BITSTREAM_DATA;
+    outbuf.numBufs = 1;
+    outbuf.bufs = &poutbuf;
+    outbuf.bufferIdentifiers = &out_identifier;
+    outbuf.bufSizes = &out_size;
+    outbuf.bufElSizes = &out_elem_size;
+
+    AACENC_InArgs in_args = { 0 };
+    AACENC_OutArgs out_args = { 0 };
+
+    AudioCodecAttribute attr = codec->m_audioAttribute;
+
     while (1)
     {
         if (codec->m_QuitCmd == 1)
         {
             break;
         }
+
+        MediaFrame* frame = codec->PopAudioFrame();
+        if (frame == NULL)
+        {
+            continue;
+        }
+
+        pinbuf = frame->m_pData;
+        in_size = frame->m_dataSize;
+
+        in_args.numInSamples = inbuf.bufSizes[0] / (attr.channel * attr.bitwide / 8);
+
+        AACENC_ERROR err;
+        if ((err = aacEncEncode(codec->m_audioEncoder, &inbuf, &outbuf, &in_args, &out_args)) != AACENC_OK) {
+            if (err == AACENC_ENCODE_EOF)
+                break;
+            OutputDebugString(TEXT("Encoding failed\n"));
+            break;
+        }
+        int size = out_args.numOutBytes;
+        if (size)
+        {
+            MediaPacket* packet = new MediaPacket(PACKET_TYPE_AUDIO, size);
+            memcpy(packet->m_pData, outbuf.bufs[0], size);
+            codec->PushAudioPacket(packet);
+        }
+        free(frame->m_pData);
+        delete frame;
     }
+
+    free(poutbuf);
 
 	return 0;
 }
@@ -602,7 +687,7 @@ int Codec::SetSourceAttribute(void* attribute, AttributeType type)
 
 int Codec::SendFrame(MediaFrame * frame)
 {
-    if (frame == NULL && m_Status!= CODEC_STATUS_START) {
+    if (frame == NULL || m_Status!= CODEC_STATUS_START) {
         return -1;
     }
 
@@ -655,23 +740,13 @@ int Codec::SendFrame(MediaFrame * frame)
 			return -1;
 		}
 
-		AACENC_BufDesc* sameple = new AACENC_BufDesc;
-		if (frame == NULL)
-		{
-			return -1;
-		}
-		int in_identifier = IN_AUDIO_DATA;
-		int in_size = frame->m_dataSize;
-		int in_elem_size = 2;
-		void * buf = malloc(in_size);
+        MediaFrame* sample = new MediaFrame();
+        sample->m_pData = (BYTE*)malloc(frame->m_dataSize);
+        sample->m_dataSize = frame->m_dataSize;
 
-		sameple->numBufs = 1;
-		sameple->bufferIdentifiers = &in_identifier;
-		sameple->bufSizes = &in_size;
-		sameple->bufs = &buf;
-		sameple->bufElSizes = &in_elem_size;
+        memcpy(sample->m_pData, frame->m_pData, frame->m_dataSize);
 
-		PushAudioFrame(sameple);
+		PushAudioFrame(sample);
     }
 
 	return 0;
@@ -697,6 +772,7 @@ int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
     if (attribute != NULL)
     {
         m_audioAttribute = *attribute;
+        m_audioAttribute.bitwide = m_audioSrcAttribute.bitwide;
     }
 	return 0;
 }
@@ -708,7 +784,7 @@ int Codec::Start()
 	m_QuitCmd = 0;
     m_videoThread = CreateThread(NULL, 0, VideoEncodecThread, this, 0, NULL);
     m_audioThread = CreateThread(NULL, 0, AudioEncodecThread, this, 0, NULL);
-
+    m_Status = CODEC_STATUS_START;
 	return 0;
 }
 
@@ -722,6 +798,7 @@ int Codec::Pause()
 int Codec::Stop()
 {
 
+    m_Status = CODEC_STATUS_STOP;
 	m_QuitCmd = 1;
     WaitForSingleObject(m_videoThread, INFINITE);
     WaitForSingleObject(m_audioThread, INFINITE);
@@ -744,12 +821,12 @@ MediaPacket* Codec::GetAudioPacket()
 
 int Codec::GetVideoPacketCount()
 {
-	return videoPacketQueue.size();
+	return (int)videoPacketQueue.size();
 }
 
 
 int Codec::GetAudioPacketCount()
 {
-	return 0;
+	return (int)audioPacketQueue.size();
 }
 

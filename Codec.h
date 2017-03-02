@@ -85,8 +85,8 @@ private:
 	MediaPacket* PopVideoPacket();
 	void PushVideoPacket(MediaPacket* packet);
 
-	AACENC_BufDesc* PopAudioFrame();
-	void PushAudioFrame(AACENC_BufDesc* pic);
+	MediaFrame* PopAudioFrame();
+	void PushAudioFrame(MediaFrame* frame);
 
 	MediaPacket* PopAudioPacket();
 	void PushAudioPacket(MediaPacket* packet);
@@ -118,7 +118,7 @@ private:
 	queue<x264_picture_t *> videoFrameQueue;
 	queue<MediaPacket *> videoPacketQueue;
 
-	queue<AACENC_BufDesc *> audioFrameQueue;
+	queue<MediaFrame *> audioFrameQueue;
 	queue<MediaPacket *> audioPacketQueue;
 };
 
