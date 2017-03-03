@@ -140,6 +140,7 @@ BOOL CPangolinDlg::OnInitDialog()
     Render::Init(GetDlgItem(IDC_RENDER)->GetSafeHwnd());
     render = Render::GetRender();
     codec = new Codec();
+    rtmpc = new Rtmpc(codec);
 
     videoCapture->AddSink(render);
     videoCapture->AddSink(codec);
@@ -507,7 +508,15 @@ void CPangolinDlg::OnBnClickedPush()
         this->GetAudioAttribute(&a_attribute);
         codec->SetAudioCodecAttribute(&a_attribute);
 
+        CString strUrl;
+        char url[256] = {0};
+        CEdit *pEdit = (CEdit *)this->GetDlgItem(IDC_RTMPURL);
+        pEdit->GetWindowText(strUrl);
+        WideCharToMultiByte(CP_ACP, 0, strUrl, strUrl.GetLength(), url, 256, NULL, NULL);
+        rtmpc->SetConfig(url);
+
         codec->Start();
+        rtmpc->Start();
     }
     else if (curState == 1)
     {
@@ -515,6 +524,8 @@ void CPangolinDlg::OnBnClickedPush()
         hChild->SetWindowText(TEXT("开始推流"));
         curState = 0;
         this->EnableAllControl(TRUE);
+
         codec->Stop();
+        rtmpc->Stop();
     }
 }

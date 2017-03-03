@@ -21,6 +21,7 @@ private:
     Capture *audioCapture;
     Render  *render;
     Codec   *codec;
+    Rtmpc   *rtmpc;
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV Ö§³Ö

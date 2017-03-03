@@ -772,6 +772,16 @@ int Codec::SetVideoCodecAttribute(VideoCodecAttribute* attribute)
 }
 
 
+int Codec::GetVideoCodecAttribute(const VideoCodecAttribute** attribute)
+{
+    if (attribute != NULL)
+    {
+        *attribute = &m_videoAttribute;
+    }
+    return 0;
+}
+
+
 int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
 {
     if (attribute != NULL)
@@ -780,6 +790,16 @@ int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
         m_audioAttribute.bitwide = m_audioSrcAttribute.bitwide;
     }
 	return 0;
+}
+
+
+int Codec::GetAudioCodecAttribute(const AudioCodecAttribute** attribute)
+{
+    if (attribute != NULL)
+    {
+        *attribute = &m_audioAttribute;
+    }
+    return 0;
 }
 
 

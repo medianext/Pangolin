@@ -80,6 +80,12 @@ BOOL CPangolinApp::InitInstance()
 		hr = MFStartup(MF_VERSION);
         Capture::Init();
 	}
+     //Init Windows Socket
+    WSADATA  Ws;
+    if (WSAStartup(MAKEWORD(2, 2), &Ws) != 0)
+    {
+        OutputDebugString(TEXT("Init Windows socket failed!\n"));
+    }
 
 	RegisterRenderWndClass(NULL);
 
@@ -109,6 +115,9 @@ BOOL CPangolinApp::InitInstance()
 	}
 
     Capture::Uninit();
+
+    WSACleanup();
+
 	// ∑¥≥ı ºªØ Media Foundation
 	MFShutdown();
 	CoUninitialize();

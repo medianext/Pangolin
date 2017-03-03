@@ -67,6 +67,7 @@ template <class T> void SafeRelease(T **ppT)
 #include "Capture.h"
 #include "Render.h"
 #include "Codec.h"
+#include "Rtmpc.h"
 
 #ifdef _UNICODE
 #if defined _M_IX86

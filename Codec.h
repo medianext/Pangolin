@@ -57,8 +57,11 @@ public:
     int SetSourceAttribute(void* attribute, AttributeType type);
     int SendFrame(MediaFrame * frame);
 
-	int SetVideoCodecAttribute(VideoCodecAttribute* attribute);
-	int SetAudioCodecAttribute(AudioCodecAttribute* attribute);
+    int SetVideoCodecAttribute(VideoCodecAttribute* attribute);
+    int GetVideoCodecAttribute(const VideoCodecAttribute** attribute);
+
+    int SetAudioCodecAttribute(AudioCodecAttribute* attribute);
+    int GetAudioCodecAttribute(const AudioCodecAttribute** attribute);
 
 	int Start();
 	int Pause();

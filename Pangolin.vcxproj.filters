@@ -60,6 +60,9 @@
     <ClInclude Include="BufferLock.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Rtmpc.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pangolin.cpp">
@@ -93,6 +96,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="AudioCapture.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Rtmpc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
