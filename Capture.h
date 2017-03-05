@@ -22,10 +22,13 @@ class Capture
 {
 
 public:
+	virtual ~Capture();
+
+public:
     static int Init();
     static int Uninit();
-    static int EnumVideoCature(std::vector<WCHAR *> *vCaptureList);
-    static int EnumAudioCature(std::vector<WCHAR *> *aCaptureList);
+    static int EnumVideoCature(std::vector<CString *> *vCaptureList);
+    static int EnumAudioCature(std::vector<CString *> *aCaptureList);
     static Capture* GetVideoCature(int index);
     static Capture* GetAudioCature(int index);
 

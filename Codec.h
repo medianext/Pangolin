@@ -44,6 +44,14 @@ struct AudioCodecAttribute
     int bitrate;
 };
 
+struct CodecStatistics {
+	uint32_t videoFrameCnt;
+	uint32_t videoPacketCnt;
+	uint32_t videoLostCnt;
+	uint32_t videoDecCnt;
+	double   videoDecFps;
+};
+
 
 class Codec :
     public Sink
@@ -56,6 +64,8 @@ public:
 public:
     int SetSourceAttribute(void* attribute, AttributeType type);
     int SendFrame(MediaFrame * frame);
+
+	int GetCodecStatistics(CodecStatistics* statistics);
 
     int SetVideoCodecAttribute(VideoCodecAttribute* attribute);
     int GetVideoCodecAttribute(const VideoCodecAttribute** attribute);
@@ -101,27 +111,37 @@ private:
 	static DWORD WINAPI AudioEncodecThread(LPVOID lpParam);
 
 private:
-	int                      m_Status;
-	int                      m_QuitCmd;
+	int                      m_Status = 0;
+	int                      m_QuitCmd = 0;
 
-	HANDLE                   m_videoThread;
-	HANDLE                   m_audioThread;
+	HANDLE                   m_videoThread = NULL;
+	HANDLE                   m_audioThread = NULL;
 
-	VideoCaptureAttribute    m_videoSrcAttribute;
-	AudioCaptureAttribute    m_audioSrcAttribute;
+	VideoCaptureAttribute    m_videoSrcAttribute = { 0 };
+	AudioCaptureAttribute    m_audioSrcAttribute = { 0 };
 
-	VideoCodecAttribute      m_videoAttribute;
-	AudioCodecAttribute      m_audioAttribute;
+	VideoCodecAttribute      m_videoAttribute = { 0 };
+	AudioCodecAttribute      m_audioAttribute = { 0 };
 
-    HANDLE_AACENCODER        m_audioEncoder;
-    x264_t*                  m_videoEncoder;
+    HANDLE_AACENCODER        m_audioEncoder = NULL;
+    x264_t*                  m_videoEncoder = NULL;
 
 	IMAGE_TRANSFORM_FN      m_convertFn;
+
+	CRITICAL_SECTION        m_vfMtx;
+	CRITICAL_SECTION        m_vpMtx;
+	CRITICAL_SECTION        m_afMtx;
+	CRITICAL_SECTION        m_apMtx;
 
 	queue<x264_picture_t *> videoFrameQueue;
 	queue<MediaPacket *> videoPacketQueue;
 
 	queue<MediaFrame *> audioFrameQueue;
 	queue<MediaPacket *> audioPacketQueue;
+
+	//Statistics
+	uint32_t m_videoLostCnt    = 0;
+	uint32_t m_videoDecCnt     = 0;
+	double   m_videoDecFps     = 0;
 };
 

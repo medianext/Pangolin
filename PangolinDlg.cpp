@@ -11,6 +11,7 @@
 #define new DEBUG_NEW
 #endif
 
+#define CODEC_STATISTICS_TIMER 1
 
 // CPangolinDlg 对话框
 
@@ -32,6 +33,9 @@ BEGIN_MESSAGE_MAP(CPangolinDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
     ON_NOTIFY(TCN_SELCHANGE, IDC_SETTING, &CPangolinDlg::OnTabChange)
     ON_BN_CLICKED(IDC_PUSH, &CPangolinDlg::OnBnClickedPush)
+	ON_WM_CLOSE()
+	ON_WM_DESTROY()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -55,6 +59,7 @@ BOOL CPangolinDlg::OnInitDialog()
     hTab->InsertItem(3, TEXT("关于"));
 
     // 初始化采集器
+	Capture::Init();
     videoCapture = Capture::GetVideoCature(0);
     audioCapture = Capture::GetAudioCature(0);
 
@@ -63,9 +68,9 @@ BOOL CPangolinDlg::OnInitDialog()
     CEdit* hEdit = NULL;
     int vCnt, aCnt;
 
-    vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
+	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_RESOLUTION);
     vCnt = videoCapture->EnumAttribute((void*)&pVideoAttribute);
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_RESOLUTION);
     set<wstring> strset;
     for (int i = 0, j=0; i < vCnt; i++)
     {
@@ -89,9 +94,9 @@ BOOL CPangolinDlg::OnInitDialog()
     hEdit->SetWindowTextW(L"2000");
 
 
+    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
     vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
     aCnt = audioCapture->EnumAttribute((void*)&pAudioAttribute);
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
     for (int i = 0; i < aCnt; i++)
     {
         wchar_t str[20];
@@ -107,22 +112,28 @@ BOOL CPangolinDlg::OnInitDialog()
     hEdit->SetWindowTextW(L"64000");
 
 
-	std::vector<WCHAR *> strList;
+	vector<CString *> strList;
+	vector<CString *>::iterator it;
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CAP);
 	vCnt = Capture::EnumVideoCature(&strList);
-	for (int i = 0; i < vCnt; i++)
+	for (it=strList.begin(); it!=strList.end();)
 	{
-		hComBox->AddString(strList[i]);
+		CString * str = *it;
+		hComBox->AddString(*str);
+		it = strList.erase(it);
+		delete str;
 	}
 	hComBox->SetCurSel(0);
-	strList.clear();
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CAP);
 	aCnt = Capture::EnumAudioCature(&strList);
-	for (int i = 0; i < aCnt; i++)
+	for (it = strList.begin(); it != strList.end();)
 	{
-		hComBox->AddString(strList[i]);
+		CString * str = *it;
+		hComBox->AddString(*str);
+		it = strList.erase(it);
+		delete str;
 	}
 	hComBox->SetCurSel(0);
 
@@ -180,6 +191,74 @@ void CPangolinDlg::OnPaint()
 		CDialogEx::OnPaint();
 	}
 }
+
+
+void CPangolinDlg::OnClose()
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+
+	if (rtmpc)
+	{
+		rtmpc->Stop();
+	}
+	if (codec)
+	{
+		codec->Stop();
+	}
+
+	CDialogEx::OnClose(); 
+}
+
+
+void CPangolinDlg::OnDestroy()
+{
+	CDialogEx::OnDestroy();
+
+	// TODO: 在此处添加消息处理程序代码
+
+	if (videoCapture)
+	{
+		videoCapture->Stop();
+		delete videoCapture;
+	}
+	if (audioCapture)
+	{
+		audioCapture->Stop();
+		delete audioCapture;
+	}
+	Capture::Uninit();
+
+	if (rtmpc)
+	{
+		delete rtmpc;
+	}
+	if (codec)
+	{
+		delete codec;
+	}
+
+	Render::Uninit();
+
+}
+
+
+void CPangolinDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+
+	if (nIDEvent == CODEC_STATISTICS_TIMER)
+	{
+		if (codec)
+		{
+			CodecStatistics statistics;
+			codec->GetCodecStatistics(&statistics);
+
+		}
+	}
+
+	CDialogEx::OnTimer(nIDEvent);
+}
+
 
 //当用户拖动最小化窗口时系统调用此函数取得光标
 //显示。
@@ -517,6 +596,8 @@ void CPangolinDlg::OnBnClickedPush()
 
         codec->Start();
         rtmpc->Start();
+
+		SetTimer(CODEC_STATISTICS_TIMER, 1000, NULL);
     }
     else if (curState == 1)
     {
@@ -524,6 +605,8 @@ void CPangolinDlg::OnBnClickedPush()
         hChild->SetWindowText(TEXT("开始推流"));
         curState = 0;
         this->EnableAllControl(TRUE);
+
+		KillTimer(CODEC_STATISTICS_TIMER);
 
         codec->Stop();
         rtmpc->Stop();

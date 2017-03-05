@@ -44,7 +44,6 @@ VideoCapture::VideoCapture(void * priv) :
                 hr = pMediaTypeHandler->GetMediaTypeCount(&dwMediaTypeCount);
                 for (DWORD j = 0; j < dwMediaTypeCount; j++)
                 {
-                    VideoCaptureAttribute *attribute = new VideoCaptureAttribute();
                     IMFMediaType * pMediaType = NULL;
                     hr = pMediaTypeHandler->GetMediaTypeByIndex(j, &pMediaType);
                     if (SUCCEEDED(hr))
@@ -60,13 +59,15 @@ VideoCapture::VideoCapture(void * priv) :
                         {
                             hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
                         }
-                        attribute = new VideoCaptureAttribute();
+
+						VideoCaptureAttribute *attribute = new VideoCaptureAttribute();
                         attribute->format = subType;
                         attribute->stride = lStride;
                         attribute->width = uWidth;
                         attribute->height = uHeight;
                         attribute->fps = uNummerator;
                         m_Attributes.push_back(attribute);
+
                         UINT32 factor = uWidth * uHeight * uNummerator;
                         if (factor > maxFactor)
                         {
@@ -137,9 +138,19 @@ VideoCapture::VideoCapture(void * priv) :
 
 VideoCapture::~VideoCapture()
 {
+	EnterCriticalSection(&m_critsec);
+	SafeRelease(&m_pReader);
+	LeaveCriticalSection(&m_critsec);
 
-    SafeRelease(&m_pActivate);
-    SafeRelease(&m_pReader);
+	VideoCaptureAttribute* pattr = NULL;
+	vector<VideoCaptureAttribute*>::iterator it;
+	for (it = m_Attributes.begin(); it != m_Attributes.end();)
+	{
+		pattr = *it;
+		it = m_Attributes.erase(it);
+		delete pattr;
+	}
+
     DeleteCriticalSection(&m_critsec);
 }
 
@@ -181,7 +192,7 @@ HRESULT VideoCapture::OnReadSample(
     HRESULT hrStatus,
     DWORD /* dwStreamIndex */,
     DWORD /* dwStreamFlags */,
-    LONGLONG /* llTimestamp */,
+    LONGLONG llTimestamp,
     IMFSample *pSample      // Can be NULL
     )
 {
@@ -209,6 +220,7 @@ HRESULT VideoCapture::OnReadSample(
             {
                 MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, m_attribute.width, m_attribute.height, m_attribute.stride);
                 frame.m_subtype = m_attribute.format;
+				frame.m_uTimestamp = llTimestamp / 10;
 
 				if (SUCCEEDED(hr)) {
                     vector<Sink*>::iterator iter = m_Sinks.begin();

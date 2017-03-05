@@ -10,6 +10,13 @@
 #define RTMP_STATUS_PAUSE  2
 #define RTMP_STATUS_START  3
 
+struct H264Header {
+	unsigned char * sps;
+	int spslen;
+	unsigned char * pps;
+	int ppslen;
+};
+
 
 class Rtmpc
 {
@@ -28,20 +35,27 @@ private:
     int Disconnect();
     int SetChunkSize(int size);
     int SendMetadata();
-    int SendVideoHeader();
+    int SendVideoHeader(unsigned char * pdata, int size);
     int SendAudioHeader();
-    int SendVideoData();
-    int SendAudioData();
+    int SendVideoData(MediaPacket* packet);
+    int SendAudioData(MediaPacket* packet);
+
+	int ParseSpsPps(unsigned char* pdata, int size, H264Header* head);
+	int DetectVideoData(unsigned char* pdata, int size, unsigned char **ppdata, int* type);
 
     static DWORD WINAPI RtmpProcessThread(LPVOID lpParam);
 
 private:
-    Codec* m_pCodec;
-    RTMP*  m_pRtmp;
-    HANDLE m_pThread;
+    Codec* m_pCodec  = NULL;
+    RTMP*  m_pRtmp   = NULL;
+    HANDLE m_pThread = NULL;
 
-    int m_QuitCmd;
-    int m_Status;
+    int m_QuitCmd = 0;
+    int m_Status  = 0;
+	bool m_bConnected = false;
+	bool m_bNeedKeyframe = true;
+	unsigned int m_uFirstTimestamp = 0;
+
     char m_Url[256];
 };
 

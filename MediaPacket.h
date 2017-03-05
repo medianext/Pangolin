@@ -18,5 +18,9 @@ public:
     PacketType m_PacketType;
     int   m_dataSize;
 	BYTE  *m_pData;
+
+	bool m_bKeyframe;
+
+	unsigned int m_uTimestamp;
 };
 

@@ -268,6 +268,10 @@ Codec::Codec() :
     m_audioEncoder(NULL),
     m_Status(0)
 {
+	InitializeCriticalSection(&m_vfMtx);
+	InitializeCriticalSection(&m_vpMtx);
+	InitializeCriticalSection(&m_afMtx);
+	InitializeCriticalSection(&m_apMtx);
 }
 
 
@@ -281,7 +285,11 @@ Codec::~Codec()
     if (m_audioEncoder)
     {
         aacEncClose(&m_audioEncoder);
-    }
+	}
+	DeleteCriticalSection(&m_vfMtx);
+	DeleteCriticalSection(&m_vpMtx);
+	DeleteCriticalSection(&m_afMtx);
+	DeleteCriticalSection(&m_apMtx);
 }
 
 
@@ -319,6 +327,8 @@ int Codec::ConfigVideoCodec()
     param.i_height = m_videoAttribute.height;
     param.i_fps_num = m_videoAttribute.fps;
     param.i_fps_den = 1;
+	param.i_timebase_den = 1000*1000;
+	param.i_timebase_num = 1;
     param.i_keyint_max = m_videoAttribute.fps;
     param.b_intra_refresh = 1;
     param.b_annexb = 1;
@@ -401,6 +411,7 @@ int Codec::AllocMemory()
 
 int Codec::FreeMemory()
 {
+	EnterCriticalSection(&m_vfMtx);
 	while (!videoFrameQueue.empty())
 	{
 		x264_picture_t *pic = videoFrameQueue.front();
@@ -408,27 +419,34 @@ int Codec::FreeMemory()
 		x264_picture_clean(pic);
 		delete pic;
 	}
+	LeaveCriticalSection(&m_vfMtx);
 
+	EnterCriticalSection(&m_vpMtx);
 	while (!videoPacketQueue.empty())
 	{
 		MediaPacket* packet = videoPacketQueue.front();
 		videoPacketQueue.pop();
 		delete packet;
-    }
+	}
+	LeaveCriticalSection(&m_vpMtx);
 
+	EnterCriticalSection(&m_afMtx);
     while (!audioFrameQueue.empty())
     {
         MediaFrame *frame = audioFrameQueue.front();
         audioFrameQueue.pop();
         delete frame;
-    }
+	}
+	LeaveCriticalSection(&m_afMtx);
 
+	EnterCriticalSection(&m_apMtx);
     while (!audioPacketQueue.empty())
     {
         MediaPacket* packet = audioPacketQueue.front();
         audioPacketQueue.pop();
         delete packet;
-    }
+	}
+	LeaveCriticalSection(&m_apMtx);
 	return 0;
 }
 
@@ -436,11 +454,13 @@ int Codec::FreeMemory()
 x264_picture_t* Codec::PopVideoPicture()
 {
 	x264_picture_t *pic = NULL;
+	EnterCriticalSection(&m_vfMtx);
 	if (!videoFrameQueue.empty())
 	{
 		pic = videoFrameQueue.front();
 		videoFrameQueue.pop();
 	}
+	LeaveCriticalSection(&m_vfMtx);
 	return pic;
 }
 
@@ -449,7 +469,9 @@ void Codec::PushVideoPicture(x264_picture_t* pic)
 {
 	if (pic)
 	{
+		EnterCriticalSection(&m_vfMtx);
 		videoFrameQueue.push(pic);
+		LeaveCriticalSection(&m_vfMtx);
 	}
 }
 
@@ -457,11 +479,13 @@ void Codec::PushVideoPicture(x264_picture_t* pic)
 MediaPacket* Codec::PopVideoPacket()
 {
 	MediaPacket* packet = NULL;
+	EnterCriticalSection(&m_vpMtx);
 	if (!videoPacketQueue.empty())
 	{
 		packet = videoPacketQueue.front();
 		videoPacketQueue.pop();
 	}
+	LeaveCriticalSection(&m_vpMtx);
 	return packet;
 }
 
@@ -469,20 +493,24 @@ MediaPacket* Codec::PopVideoPacket()
 void Codec::PushVideoPacket(MediaPacket* packet)
 {
 	if (packet!=NULL)
-    {
+	{
+		EnterCriticalSection(&m_vpMtx);
 		videoPacketQueue.push(packet);
+		LeaveCriticalSection(&m_vpMtx);
 	}
 }
 
 
 MediaFrame* Codec::PopAudioFrame()
 {
-    MediaFrame *frame = NULL;
+	MediaFrame *frame = NULL;
+	EnterCriticalSection(&m_afMtx);
 	if (!audioFrameQueue.empty())
 	{
 		frame = audioFrameQueue.front();
 		audioFrameQueue.pop();
 	}
+	LeaveCriticalSection(&m_afMtx);
 	return frame;
 }
 
@@ -491,7 +519,9 @@ void Codec::PushAudioFrame(MediaFrame* frame)
 {
 	if (frame)
 	{
+		EnterCriticalSection(&m_afMtx);
 		audioFrameQueue.push(frame);
+		LeaveCriticalSection(&m_afMtx);
 	}
 }
 
@@ -499,11 +529,13 @@ void Codec::PushAudioFrame(MediaFrame* frame)
 MediaPacket* Codec::PopAudioPacket()
 {
 	MediaPacket* packet = NULL;
+	EnterCriticalSection(&m_apMtx);
 	if (!audioPacketQueue.empty())
 	{
 		packet = audioPacketQueue.front();
 		audioPacketQueue.pop();
 	}
+	LeaveCriticalSection(&m_apMtx);
 	return packet;
 }
 
@@ -512,7 +544,9 @@ void Codec::PushAudioPacket(MediaPacket* packet)
 {
 	if (packet != NULL)
 	{
+		EnterCriticalSection(&m_apMtx);
 		audioPacketQueue.push(packet);
+		LeaveCriticalSection(&m_apMtx);
 	}
 }
 
@@ -528,8 +562,17 @@ int Codec::InitCodec()
 
 int Codec::UninitCodec()
 {
-    aacEncClose(&m_audioEncoder);
-    x264_encoder_close(m_videoEncoder);
+	if (m_videoEncoder)
+	{
+		x264_encoder_close(m_videoEncoder);
+		m_videoEncoder = NULL;
+	}
+
+	if (m_audioEncoder)
+	{
+		aacEncClose(&m_audioEncoder);
+		m_audioEncoder = NULL;
+	}
 	FreeMemory();
 	return 0;
 }
@@ -538,6 +581,13 @@ int Codec::UninitCodec()
 DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 {
 	Codec* codec = (Codec*)lpParam;
+
+	SYSTEMTIME time = {0};
+	GetLocalTime(&time);
+
+	clock_t start = clock();
+	clock_t finish;
+	int count = 0;
 
 	while (1)
 	{
@@ -561,13 +611,31 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 		i_frame_size = x264_encoder_encode(codec->m_videoEncoder, &nal, &i_nal, pic, &pic_out);
 		if (i_frame_size > 0)
 		{
-			OutputDebugString(TEXT("get video packet.\n"));
+			//OutputDebugString(TEXT("get video packet.\n"));
 			MediaPacket* packet = new MediaPacket(PACKET_TYPE_VIDEO, i_frame_size);
 			int size = 0;
 			for (int i = 0; i < i_nal; ++i)
 			{
 				memcpy(&(packet->m_pData[size]), nal[i].p_payload, nal[i].i_payload);
-				size += nal[i].i_payload;
+				size += nal[i].i_payload;				
+			}
+
+			if (pic_out.b_keyframe)
+			{
+				packet->m_bKeyframe = true;
+			}
+			packet->m_uTimestamp = pic_out.i_pts / 1000;
+
+			//Statistics
+			codec->m_videoDecCnt++;
+			count++;
+			if (count > 10)
+			{
+				finish = clock();
+				double fps = (double)count * CLOCKS_PER_SEC / (finish - start);
+				codec->m_videoDecFps = fps;
+				start = finish;
+				count = 0;
 			}
 
             codec->PushVideoPacket(packet);
@@ -657,7 +725,7 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
 
             codec->PushAudioPacket(packet);
         }
-        free(frame->m_pData);
+        //free(frame->m_pData);
         delete frame;
     }
 
@@ -707,7 +775,7 @@ int Codec::SendFrame(MediaFrame * frame)
 
 		if (videoFrameQueue.size()>=MAX_VIDEO_FRAME || videoPacketQueue.size()>=MAX_VIDEO_PACKET)
 		{
-			OutputDebugString(TEXT("buffer is full!\n"));
+			m_videoLostCnt++;
 			return -1;
 		}
 
@@ -732,6 +800,7 @@ int Codec::SendFrame(MediaFrame * frame)
 			frame->m_width,
 			frame->m_height
 			);
+		pic->i_pts = frame->m_uTimestamp;
 
 		PushVideoPicture(pic);
     } 
@@ -740,7 +809,6 @@ int Codec::SendFrame(MediaFrame * frame)
 
 		if (audioFrameQueue.size() >= MAX_AUDIO_FRAME || audioPacketQueue.size() >= MAX_AUDIO_PACKET)
 		{
-			OutputDebugString(TEXT("buffer is full!\n"));
 			return -1;
 		}
 
@@ -761,6 +829,20 @@ int Codec::SendFrame(MediaFrame * frame)
 //////////////////////////////////////////////////////////////////////////
 // public method
 //////////////////////////////////////////////////////////////////////////
+
+int Codec::GetCodecStatistics(CodecStatistics* statistics)
+{
+	if (statistics)
+	{
+		statistics->videoFrameCnt  = videoFrameQueue.size();
+		statistics->videoPacketCnt = videoPacketQueue.size();
+		statistics->videoLostCnt   = m_videoLostCnt;
+		statistics->videoDecCnt    = m_videoDecCnt;
+		statistics->videoDecFps    = m_videoDecFps;
+	}
+	return 0;
+}
+
 
 int Codec::SetVideoCodecAttribute(VideoCodecAttribute* attribute)
 {

@@ -78,7 +78,6 @@ BOOL CPangolinApp::InitInstance()
 	if (SUCCEEDED(hr))
 	{
 		hr = MFStartup(MF_VERSION);
-        Capture::Init();
 	}
      //Init Windows Socket
     WSADATA  Ws;
@@ -113,8 +112,6 @@ BOOL CPangolinApp::InitInstance()
 	{
 		delete pShellManager;
 	}
-
-    Capture::Uninit();
 
     WSACleanup();
 

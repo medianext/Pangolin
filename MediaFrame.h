@@ -1,5 +1,8 @@
 #pragma once
 
+#include "BufferLock.h"
+
+
 enum FrameType {
 
     FRAME_TYPE_VIDEO = 0,
@@ -17,9 +20,10 @@ public:
 public:
     // common filed
     FrameType m_FrameType;
-    GUID  m_subtype;
-    BYTE  *m_pData;
-    DWORD m_dataSize;
+	GUID  m_subtype;
+    BYTE  *m_pData = NULL;
+	DWORD m_dataSize = 0;
+	LONGLONG m_uTimestamp = 0;
 
     // video specific filed
     int m_stride;

@@ -17,11 +17,11 @@ public:
 	enum { IDD = IDD_PANGOLIN_DIALOG };
 #endif
 private:
-    Capture *videoCapture;
-    Capture *audioCapture;
-    Render  *render;
-    Codec   *codec;
-    Rtmpc   *rtmpc;
+    Capture *videoCapture = NULL;
+    Capture *audioCapture = NULL;
+    Render  *render = NULL;
+    Codec   *codec = NULL;
+    Rtmpc   *rtmpc = NULL;
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV Ö§³Ö
@@ -49,4 +49,7 @@ protected:
 public:
     afx_msg void OnTabChange(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnBnClickedPush();
+	afx_msg void OnClose();
+	afx_msg void OnDestroy();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

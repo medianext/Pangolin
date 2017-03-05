@@ -8,6 +8,12 @@ static UINT32 m_audioCapCnt;
 static IMFActivate **m_ppVideoDevices;
 static IMFActivate **m_ppAudioDevices;
 
+
+Capture::~Capture()
+{
+}
+
+
 int Capture::Init()
 {
     HRESULT hr = S_OK;
@@ -56,12 +62,21 @@ int Capture::Uninit()
     HRESULT hr = S_OK;
     IMFAttributes *pAttributes = NULL;
 
+	for (UINT32 i = 0; i < m_videoCapCnt; i++)
+	{
+		SafeRelease(&m_ppVideoDevices[i]);
+	}
+
+	for (UINT32 i = 0; i < m_audioCapCnt; i++)
+	{
+		SafeRelease(&m_ppAudioDevices[i]);
+	}
 
     return m_audioCapCnt;
 }
 
 
-int Capture::EnumVideoCature(std::vector<WCHAR *> *vCaptureList)
+int Capture::EnumVideoCature(std::vector<CString *> *vCaptureList)
 {
     if (vCaptureList != NULL)
     {
@@ -69,11 +84,10 @@ int Capture::EnumVideoCature(std::vector<WCHAR *> *vCaptureList)
         {
             WCHAR * szFriendlyName;
             m_ppVideoDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, NULL);
-            WCHAR * str = new WCHAR[wcslen(szFriendlyName)];
-            StrCpyW(str, szFriendlyName);
+			CString* str = new CString;
+			str->Format(TEXT("%s"), szFriendlyName);
             vCaptureList->insert(vCaptureList->end(), str);
             CoTaskMemFree(szFriendlyName);
-            SafeRelease(&m_ppVideoDevices[i]);
         }
     }
 
@@ -81,19 +95,18 @@ int Capture::EnumVideoCature(std::vector<WCHAR *> *vCaptureList)
 }
 
 
-int Capture::EnumAudioCature(std::vector<WCHAR *> *aCaptureList)
+int Capture::EnumAudioCature(std::vector<CString *> *aCaptureList)
 {
     if (aCaptureList != NULL)
     {
         for (UINT32 i = 0; i < m_audioCapCnt; i++)
         {
             WCHAR * szFriendlyName;
-            m_ppAudioDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, NULL);
-            WCHAR * str = new WCHAR[wcslen(szFriendlyName)];
-            StrCpyW(str, szFriendlyName);
+			m_ppAudioDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, NULL);
+			CString* str = new CString;
+			str->Format(TEXT("%s"), szFriendlyName);
             aCaptureList->insert(aCaptureList->end(), str);
             CoTaskMemFree(szFriendlyName);
-            SafeRelease(&m_ppAudioDevices[i]);
         }
     }
 

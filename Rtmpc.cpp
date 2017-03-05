@@ -10,7 +10,9 @@ Rtmpc::Rtmpc(Codec* codec) :
     m_pCodec(codec),
     m_pRtmp(NULL),
     m_pThread(NULL),
-    m_Status(0)
+    m_Status(0),
+	m_bConnected(false),
+	m_bNeedKeyframe(true)
 {
 }
 
@@ -23,6 +25,121 @@ Rtmpc::~Rtmpc()
 //////////////////////////////////////////////////////////////////////////
 // private method
 //////////////////////////////////////////////////////////////////////////
+
+int Rtmpc::ParseSpsPps(unsigned char* pdata, int size, H264Header* head)
+{
+	//sps
+	int i = 0;
+	while (i<size)
+	{
+		int tmp = i;
+		if (size-i>4 && pdata[i++]==0x00 && pdata[i++] == 0x00 && ( pdata[i++] == 0x01 || (pdata[i] == 0x00 && pdata[i++] == 0x01)))
+		{
+			int start = i;
+			while (i<size)
+			{
+				int tmp2 = i;
+				if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i] == 0x01 || (pdata[i] == 0x00 && pdata[i+1] == 0x01)))
+				{
+					i = tmp2;
+					break;
+				}
+				else {
+					i = tmp2 + 1;
+				}
+			}
+
+			if ((pdata[start] & 0x1F) == 7)
+			{
+				head->sps = &pdata[start];
+				head->spslen = i - start;
+				break;
+			}
+		}
+		else {
+			i = tmp + 1;
+		}
+
+	}
+
+	//pps
+	i = 0;
+	while (i < size)
+	{
+		int tmp = i;
+		if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i++] == 0x01 || (pdata[i] == 0x00 && pdata[i++] == 0x01)))
+		{
+			int start = i;
+			while (i < size)
+			{
+				int tmp2 = i;
+				if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i] == 0x01 || (pdata[i] == 0x00 && pdata[i + 1] == 0x01)))
+				{
+					i = tmp2;
+					break;
+				}
+				else {
+					i = tmp2 + 1;
+				}
+			}
+
+			if ((pdata[start] & 0x1F) == 8)
+			{
+				head->pps = &pdata[start];
+				head->ppslen = i - start;
+				break;
+			}
+		}
+		else {
+			i = tmp + 1;
+		}
+
+	}
+	return 0;
+}
+
+
+int Rtmpc::DetectVideoData(unsigned char* pdata, int size, unsigned char **ppdata, int* type)
+{
+
+	int i = 0;
+	while (i < size)
+	{
+		int tmp = i;
+		if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i++] == 0x01 || (pdata[i] == 0x00 && pdata[i++] == 0x01)))
+		{
+			int start = i;
+			while (i < size)
+			{
+				int tmp2 = i;
+				if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i] == 0x01 || (pdata[i] == 0x00 && pdata[i + 1] == 0x01)))
+				{
+					i = tmp2;
+					break;
+				}
+				else {
+					i = tmp2 + 1;
+				}
+			}
+
+//  			if ((pdata[start] & 0x1F) <= 5)
+//  			{
+				*ppdata = &pdata[start];
+				if ((pdata[start] & 0x1F) >= 5)
+				{
+					*type = 1;
+				}
+				return i - start;
+//			}
+		}
+		else {
+			i = tmp + 1;
+		}
+
+	}
+	return 0;
+}
+
 
 int Rtmpc::Connect()
 {
@@ -107,6 +224,13 @@ int Rtmpc::SetChunkSize(int size)
     pkt.m_nTimeStamp = 0;
     pkt.m_nBodySize = ptr - pkt.m_body;
 
+	m_pRtmp->m_outChunkSize = size;
+
+	if (!RTMP_IsConnected(m_pRtmp))
+	{
+		return -1;
+	}
+
     if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0) 
     {
         return -1;
@@ -154,7 +278,12 @@ int Rtmpc::SendMetadata()
     pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
     pkt.m_hasAbsTimestamp = 0;
     pkt.m_nTimeStamp = 0;
-    pkt.m_nBodySize = ptr - pkt.m_body;
+	pkt.m_nBodySize = ptr - pkt.m_body;
+
+	if (!RTMP_IsConnected(m_pRtmp))
+	{
+		return -1;
+	}
 
     if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
     {
@@ -167,8 +296,75 @@ int Rtmpc::SendMetadata()
 }
 
 
-int Rtmpc::SendVideoHeader()
+int Rtmpc::SendVideoHeader(unsigned char * pdata, int size)
 {
+	if (pdata == NULL|| size <=0)
+	{
+		return -1;
+	}
+
+	H264Header head = { 0 };
+	if (ParseSpsPps(pdata, size, &head) < 0)
+	{
+		return -2;
+	}
+
+	int maxBodySize = 100;
+	RTMPPacket pkt = { 0 };
+	if (RTMPPacket_Alloc(&pkt, maxBodySize) == 0)
+	{
+		return -1;
+	}
+
+	char* ptr = pkt.m_body;
+	char* pend = pkt.m_body + maxBodySize;
+
+	*ptr++ = 0x17;
+	*ptr++ = 0x00;
+	*ptr++ = 0x00;
+	*ptr++ = 0x00;
+	*ptr++ = 0x00;
+
+	*ptr++ = 0x01;
+	*ptr++ = head.sps[1];
+	*ptr++ = head.sps[2];
+	*ptr++ = head.sps[3];
+	*ptr++ = 0xff;
+
+	//sps
+	*ptr++ = 0xE1;
+	*ptr++ = (head.spslen >> 8) & 0xff;
+	*ptr++ = head.spslen & 0xff;
+	memcpy(ptr, head.sps, head.spslen);
+	ptr += head.spslen;
+
+	//pps
+	*ptr++ = 0x01;
+	*ptr++ = (head.ppslen >> 8) & 0xff;
+	*ptr++ = head.ppslen & 0xff;
+	memcpy(ptr, head.pps, head.ppslen);
+	ptr += head.ppslen;
+
+	pkt.m_nChannel = 0x04;
+	pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+	pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
+	pkt.m_nInfoField2 = 0;
+	pkt.m_hasAbsTimestamp = 0;
+	pkt.m_nTimeStamp = 0;
+	pkt.m_nBodySize = ptr - pkt.m_body;
+
+	if (!RTMP_IsConnected(m_pRtmp))
+	{
+		return -1;
+	}
+
+	if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
+	{
+		return -1;
+	}
+
+	RTMPPacket_Free(&pkt);
+
     return 0;
 }
 
@@ -179,13 +375,78 @@ int Rtmpc::SendAudioHeader()
 }
 
 
-int Rtmpc::SendVideoData()
+int Rtmpc::SendVideoData(MediaPacket* packet)
 {
-    return 0;
+	if (packet==NULL || packet->m_pData == NULL || packet->m_dataSize <= 0)
+	{
+		return -1;
+	}
+
+	unsigned char* prealdata = NULL;
+	int realsize = 0;
+	int type = 0;
+
+	realsize = DetectVideoData(packet->m_pData, packet->m_dataSize, &prealdata, &type);
+	if (prealdata==NULL)
+	{
+		return -2;
+	}
+
+	int maxBodySize = packet->m_dataSize + 9;
+	RTMPPacket pkt = { 0 };
+	if (RTMPPacket_Alloc(&pkt, maxBodySize) == 0)
+	{
+		return -3;
+	}
+
+	char* ptr = pkt.m_body;
+	char* pend = pkt.m_body + maxBodySize;
+
+	if (type){
+		*ptr++ = 0x17;
+	}
+	else {
+		*ptr++ = 0x27;
+	}
+	*ptr++ = 0x01;
+	*ptr++ = 0x00;
+	*ptr++ = 0x00;
+	*ptr++ = 0x00;
+
+	*ptr++ = (realsize >> 24) & 0xff;
+	*ptr++ = (realsize >> 16) & 0xff;
+	*ptr++ = (realsize >> 8) & 0xff;
+	*ptr++ = realsize & 0xff;
+
+	memcpy(ptr, prealdata, realsize);
+
+	ptr += realsize;
+
+	pkt.m_nChannel = 0x04;
+	pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
+	pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
+	pkt.m_nInfoField2 = 0;
+	pkt.m_hasAbsTimestamp = 0;
+	pkt.m_nTimeStamp = packet->m_uTimestamp - m_uFirstTimestamp;
+	pkt.m_nBodySize = ptr - pkt.m_body;
+
+	if (!RTMP_IsConnected(m_pRtmp))
+	{
+		return -4;
+	}
+
+	if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
+	{
+		return -5;
+	}
+
+	RTMPPacket_Free(&pkt);
+
+	return 0;
 }
 
 
-int Rtmpc::SendAudioData()
+int Rtmpc::SendAudioData(MediaPacket* packet)
 {
     return 0;
 }
@@ -194,6 +455,7 @@ int Rtmpc::SendAudioData()
 DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 {
     Rtmpc* rtmpc = (Rtmpc*)lpParam;
+	int ret = 0;
 
     if (rtmpc->Connect()<0)
     {
@@ -202,7 +464,13 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
         return 1;
     }
 
-    rtmpc->SendMetadata();
+    ret = rtmpc->SendMetadata();
+	if (ret < 0)
+	{
+		OutputDebugString(TEXT("Rtmpc send metadata failed!\n"));
+	}
+
+	bool bFirst = true;
 
     while (1)
     {
@@ -211,7 +479,53 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
             break;
         }
 
-        Sleep(100);
+		MediaPacket* videoPacket = rtmpc->m_pCodec->GetVideoPacket();
+		if (videoPacket ==NULL)
+		{
+			Sleep(10);
+			continue;
+		}
+
+		CString str;
+		str.Format(TEXT("get video packet, timestamp[%d]\n"), videoPacket->m_uTimestamp);
+		OutputDebugString(str);
+
+		if (bFirst && videoPacket->m_bKeyframe)
+		{
+			ret = rtmpc->SendVideoHeader(videoPacket->m_pData, videoPacket->m_dataSize);
+			if (ret < 0)
+			{
+				OutputDebugString(TEXT("Rtmpc send video head failed!\n"));
+			}
+			rtmpc->SendAudioHeader();
+			rtmpc->m_uFirstTimestamp = videoPacket->m_uTimestamp;
+			bFirst = false;
+		}else if (bFirst && !videoPacket->m_bKeyframe)
+		{
+			delete videoPacket;
+			continue;
+		}
+
+		if (rtmpc->m_bNeedKeyframe && !videoPacket->m_bKeyframe)
+		{
+			delete videoPacket;
+			continue;
+		}else if (rtmpc->m_bNeedKeyframe && videoPacket->m_bKeyframe)
+		{
+			rtmpc->m_bNeedKeyframe = false;
+		}
+
+		ret = rtmpc->SendVideoData(videoPacket);
+		if (ret < 0)
+		{
+			OutputDebugString(TEXT("Rtmpc send video data failed!\n"));
+		}
+		else
+		{
+			OutputDebugString(TEXT("Rtmpc send video data success!\n"));
+		}
+
+		delete videoPacket;
     }
 
     rtmpc->Disconnect();

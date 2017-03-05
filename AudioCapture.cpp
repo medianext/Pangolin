@@ -8,7 +8,7 @@ AudioCapture::AudioCapture(void * priv) :
     m_pActivate(NULL)
 {
 
-    InitializeCriticalSection(&m_critsec);
+     InitializeCriticalSection(&m_critsec);
     m_pActivate = (IMFActivate*)priv;
 
     HRESULT hr = S_OK;
@@ -44,7 +44,6 @@ AudioCapture::AudioCapture(void * priv) :
                 hr = pMediaTypeHandler->GetMediaTypeCount(&dwMediaTypeCount);
                 for (DWORD j = 0; j < dwMediaTypeCount; j++)
                 {
-                    AudioCaptureAttribute *attribute = new AudioCaptureAttribute();
                     IMFMediaType * pMediaType = NULL;
                     hr = pMediaTypeHandler->GetMediaTypeByIndex(j, &pMediaType);
                     if (SUCCEEDED(hr))
@@ -56,12 +55,14 @@ AudioCapture::AudioCapture(void * priv) :
                         hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
                         hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
                         hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_BLOCK, &wSamplesPerBlock);
-                        attribute = new AudioCaptureAttribute();
+
+						AudioCaptureAttribute *attribute = new AudioCaptureAttribute();
                         attribute->format = subType;
                         attribute->channel = uChannel;
                         attribute->samplerate = nSamplesRate;
                         attribute->bitwide = wBitsPerSample;
                         m_Attributes.push_back(attribute);
+
                         m_attribute.format = subType;
                         m_attribute.channel = uChannel;
                         m_attribute.samplerate = nSamplesRate;
@@ -116,9 +117,18 @@ AudioCapture::AudioCapture(void * priv) :
 
 AudioCapture::~AudioCapture()
 {
+	EnterCriticalSection(&m_critsec);
+	SafeRelease(&m_pReader);
+	LeaveCriticalSection(&m_critsec);
 
-    SafeRelease(&m_pActivate);
-    SafeRelease(&m_pReader);
+	vector<AudioCaptureAttribute*>::iterator it;
+	for (it = m_Attributes.begin(); it != m_Attributes.end();)
+	{
+		AudioCaptureAttribute* pattr = *it;
+		it = m_Attributes.erase(it);
+		delete pattr;
+	}
+
     DeleteCriticalSection(&m_critsec);
 }
 
@@ -160,7 +170,7 @@ HRESULT AudioCapture::OnReadSample(
     HRESULT hrStatus,
     DWORD /* dwStreamIndex */,
     DWORD /* dwStreamFlags */,
-    LONGLONG /* llTimestamp */,
+    LONGLONG llTimestamp,
     IMFSample *pSample      // Can be NULL
     )
 {
@@ -187,6 +197,7 @@ HRESULT AudioCapture::OnReadSample(
             {
                 MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, m_attribute.samplerate, m_attribute.channel, m_attribute.bitwide);
                 frame.m_subtype = m_attribute.format;
+				frame.m_uTimestamp = llTimestamp / 10;
 
                 if (SUCCEEDED(hr)) {
                     vector<Sink*>::iterator iter = m_Sinks.begin();
