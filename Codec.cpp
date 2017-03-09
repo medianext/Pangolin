@@ -922,7 +922,7 @@ MediaPacket* Codec::GetVideoPacket()
 
 MediaPacket* Codec::GetAudioPacket()
 {
-    return NULL;
+    return PopAudioPacket();
 }
 
 

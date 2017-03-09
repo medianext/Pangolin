@@ -479,16 +479,20 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
             break;
         }
 
+        // Send video
 		MediaPacket* videoPacket = rtmpc->m_pCodec->GetVideoPacket();
 		if (videoPacket ==NULL)
 		{
-			Sleep(10);
-			continue;
+            if (bFirst)
+            {
+                Sleep(10);
+                continue;
+            }
+            else
+            {
+                goto DoAudio;
+            }
 		}
-
-// 		CString str;
-// 		str.Format(TEXT("get video packet, timestamp[%d]\n"), videoPacket->m_uTimestamp);
-// 		OutputDebugString(str);
 
 		if (bFirst && videoPacket->m_bKeyframe)
 		{
@@ -500,6 +504,8 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 			delete videoPacket;
 			continue;
 		}
+
+        rtmpc->h264file.write((char *)videoPacket->m_pData, videoPacket->m_dataSize);
 
 		if (rtmpc->m_bNeedKeyframe && !videoPacket->m_bKeyframe)
 		{
@@ -525,7 +531,19 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 			OutputDebugString(TEXT("Rtmpc send video data failed!\n"));
 		}
 
-		delete videoPacket;
+        delete videoPacket;
+
+        // Send audio
+DoAudio:
+        MediaPacket* audioPacket = rtmpc->m_pCodec->GetAudioPacket();
+        if (audioPacket == NULL)
+        {
+            Sleep(10);
+            continue;
+        }
+
+        rtmpc->aacfile.write((char *)audioPacket->m_pData, audioPacket->m_dataSize);
+        delete audioPacket;
     }
 
     rtmpc->Disconnect();
@@ -564,6 +582,14 @@ int Rtmpc::GetStatus()
 
 int Rtmpc::Start()
 {
+    char filename[256];
+    SYSTEMTIME time;
+    GetLocalTime(&time);
+    snprintf(filename, 256, "video[%04d%02d%02d-%02d%02d%02d].h264", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
+    h264file.open(filename, ios::binary | ios::out);
+    snprintf(filename, 256, "audio[%04d%02d%02d-%02d%02d%02d].aac", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
+    aacfile.open(filename, ios::binary | ios::out);
+
     m_QuitCmd = 0;
     m_pThread = CreateThread(NULL, 0, RtmpProcessThread, this, 0, NULL);
     m_Status = RTMP_STATUS_START;
@@ -576,5 +602,11 @@ int Rtmpc::Stop()
     m_Status = RTMP_STATUS_STOP;
     m_QuitCmd = 1;
     WaitForSingleObject(m_pThread, INFINITE);
+
+    h264file.flush();
+    h264file.close();
+    aacfile.flush();
+    aacfile.close();
+
     return 0;
 }

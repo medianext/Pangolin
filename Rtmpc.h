@@ -57,5 +57,8 @@ private:
 	unsigned int m_uFirstTimestamp = 0;
 
     char m_Url[256];
+
+    ofstream    h264file;
+    ofstream    aacfile;
 };
 
