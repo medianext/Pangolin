@@ -486,18 +486,13 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 			continue;
 		}
 
-		CString str;
-		str.Format(TEXT("get video packet, timestamp[%d]\n"), videoPacket->m_uTimestamp);
-		OutputDebugString(str);
+// 		CString str;
+// 		str.Format(TEXT("get video packet, timestamp[%d]\n"), videoPacket->m_uTimestamp);
+// 		OutputDebugString(str);
 
 		if (bFirst && videoPacket->m_bKeyframe)
 		{
-			ret = rtmpc->SendVideoHeader(videoPacket->m_pData, videoPacket->m_dataSize);
-			if (ret < 0)
-			{
-				OutputDebugString(TEXT("Rtmpc send video head failed!\n"));
-			}
-			rtmpc->SendAudioHeader();
+			//rtmpc->SendAudioHeader();
 			rtmpc->m_uFirstTimestamp = videoPacket->m_uTimestamp;
 			bFirst = false;
 		}else if (bFirst && !videoPacket->m_bKeyframe)
@@ -515,14 +510,19 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 			rtmpc->m_bNeedKeyframe = false;
 		}
 
+        if (videoPacket->m_bKeyframe)
+        {
+            ret = rtmpc->SendVideoHeader(videoPacket->m_pData, videoPacket->m_dataSize);
+            if (ret < 0)
+            {
+                OutputDebugString(TEXT("Rtmpc send video head failed!\n"));
+            }
+        }
+
 		ret = rtmpc->SendVideoData(videoPacket);
 		if (ret < 0)
 		{
 			OutputDebugString(TEXT("Rtmpc send video data failed!\n"));
-		}
-		else
-		{
-			OutputDebugString(TEXT("Rtmpc send video data success!\n"));
 		}
 
 		delete videoPacket;
