@@ -66,11 +66,15 @@ BOOL CPangolinDlg::OnInitDialog()
 	//初始化控件数据
     CComboBox* hComBox = NULL;
     CEdit* hEdit = NULL;
+    CString str;
     int vCnt, aCnt;
 
 	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
+    VideoCaptureAttribute videoAttribute = { 0 };
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_RESOLUTION);
     vCnt = videoCapture->EnumAttribute((void*)&pVideoAttribute);
+    videoCapture->GetConfig(&videoAttribute);
+    int cur_resolution = MAKEINT32(videoAttribute.width, videoAttribute.height);
     set<wstring> strset;
     for (int i = 0, j=0; i < vCnt; i++)
     {
@@ -80,14 +84,20 @@ BOOL CPangolinDlg::OnInitDialog()
         if (strset.count(s)==0)
         {
             strset.insert(s);
+            int resolution = MAKEINT32((*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height);
             hComBox->AddString(str);
-            hComBox->SetItemData(j, MAKEINT32((*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height));
+            hComBox->SetItemData(j, resolution);
+            if (cur_resolution == resolution)
+            {
+                hComBox->SetCurSel(j);
+            }
             j++;
         }
     }
-    hComBox->SetCurSel(0);
+    //hComBox->SetCurSel(0);
     hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_FPS);
-    hComBox->SetCurSel(0);
+    str.Format(TEXT("%d"), videoAttribute.fps);
+    hComBox->SetWindowText(str);
     hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CODEC);
     hComBox->SetCurSel(0);
     hEdit = (CEdit*)this->GetDlgItem(IDC_VIDEO_BITRATE);
@@ -95,15 +105,21 @@ BOOL CPangolinDlg::OnInitDialog()
 
 
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+    AudioCaptureAttribute audioAttribute = { 0 };
     vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
     aCnt = audioCapture->EnumAttribute((void*)&pAudioAttribute);
+    audioCapture->GetConfig(&audioAttribute);
+    int cur_samplerate = audioAttribute.samplerate;
     for (int i = 0; i < aCnt; i++)
     {
         wchar_t str[20];
         swprintf(str, L"%d", (*pAudioAttribute)[i]->samplerate);
         hComBox->AddString(str);
+        if (cur_samplerate == (*pAudioAttribute)[i]->samplerate)
+        {
+            hComBox->SetCurSel(i);
+        }
     }
-    hComBox->SetCurSel(0);
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CHANNEL);
     hComBox->SetCurSel(0);
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);

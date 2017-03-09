@@ -270,8 +270,18 @@ int VideoCapture::EnumAttribute(void* attribute)
 }
 
 
-int VideoCapture::Config(void* attribute)
+int VideoCapture::SetConfig(void* attribute)
 {
+    return 0;
+}
+
+
+int VideoCapture::GetConfig(void* attribute)
+{
+    if (attribute)
+    {
+        *(VideoCaptureAttribute*)attribute = m_attribute;
+    }
     return 0;
 }
 

@@ -248,8 +248,18 @@ int AudioCapture::EnumAttribute(void* attribute)
 }
 
 
-int AudioCapture::Config(void* attribute)
+int AudioCapture::SetConfig(void* attribute)
 {
+    return 0;
+}
+
+
+int AudioCapture::GetConfig(void* attribute)
+{
+    if (attribute)
+    {
+        *(AudioCaptureAttribute*)attribute = m_attribute;
+    }
     return 0;
 }
 
