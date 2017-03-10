@@ -4,7 +4,7 @@
 
 //-------------------------------------------------------------------
 //
-// Conversion functions
+// Video Conversion functions
 //
 //-------------------------------------------------------------------
 
@@ -231,23 +231,7 @@ static void TransformImage_NV12(
 }
 
 
-typedef void(*IMAGE_TRANSFORM_FN)(
-    BYTE*       pDest,
-    LONG        lDestStride,
-    const BYTE* pSrc,
-    LONG        lSrcStride,
-    DWORD       dwWidthInPixels,
-    DWORD       dwHeightInPixels
-    );
-// Static table of output formats and conversion functions.
-struct ConversionFunction
-{
-    GUID               subtype;
-    IMAGE_TRANSFORM_FN xform;
-};
-
-
-static ConversionFunction g_FormatConversions[] =
+static VideoConversionFunction g_VideoConversions[] =
 {
     { MFVideoFormat_RGB32, TransformImage_RGB32 },
     { MFVideoFormat_RGB24, TransformImage_RGB24 },
@@ -256,7 +240,49 @@ static ConversionFunction g_FormatConversions[] =
     { MFVideoFormat_NV12,  TransformImage_NV12 }
 };
 
-const DWORD   g_cFormats = ARRAYSIZE(g_FormatConversions);
+const DWORD   g_cVideoFormats = ARRAYSIZE(g_VideoConversions);
+
+
+//-------------------------------------------------------------------
+//
+// Audio Conversion functions
+//
+//-------------------------------------------------------------------
+
+//-------------------------------------------------------------------
+// TransformImage_FLTP
+//
+// FLTP to S16
+//-------------------------------------------------------------------
+
+static void TransformImage_FLTP(MediaFrame* srcFrame, MediaFrame* dstFrame)
+{
+	short* dstData = (short*)dstFrame->m_pData;
+	float* srcData = (float*)srcFrame->m_pData;
+	int sampleCnt = dstFrame->m_dataSize * 8 / dstFrame->m_bitwide;
+	if (srcFrame->m_channels==dstFrame->m_channels)
+	{
+		*dstData++ = (short)((*srcData++) * 32767.0f);
+	}else if (srcFrame->m_channels==1 && dstFrame->m_channels==2)
+	{
+		for (int i = 0; i < sampleCnt; i++)
+		{
+			*dstData++ = (short)((*srcData++) * 32767.0f);
+			*dstData++ = *dstData;
+		}
+	}else if (srcFrame->m_channels == 2 && dstFrame->m_channels == 1)
+	{
+	}
+}
+
+
+static AudioConversionFunction g_AudioConversions[] =
+{
+	{ MFAudioFormat_Float,  TransformImage_FLTP }
+};
+
+const DWORD   g_cAudioFormats = ARRAYSIZE(g_AudioConversions);
+
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -297,20 +323,39 @@ Codec::~Codec()
 // private method
 //////////////////////////////////////////////////////////////////////////
 
-HRESULT Codec::ChooseConversionFunction(REFGUID subtype)
+HRESULT Codec::ChooseConversionFunction(AttributeType type, REFGUID subtype)
 {
-	m_convertFn = NULL;
-
-	for (DWORD i = 0; i < g_cFormats; i++)
+	if (type == ATTRIBUTE_TYPE_VIDEO)
 	{
-		if (g_FormatConversions[i].subtype == subtype)
+		m_videoConvertFn = NULL;
+
+		for (DWORD i = 0; i < g_cVideoFormats; i++)
 		{
-			m_convertFn = g_FormatConversions[i].xform;
-			return S_OK;
+			if (g_VideoConversions[i].subtype == subtype)
+			{
+				m_videoConvertFn = g_VideoConversions[i].xform;
+				return S_OK;
+			}
 		}
+		return MF_E_INVALIDMEDIATYPE;
+
+	}else if (type == ATTRIBUTE_TYPE_AUDIO)
+	{
+		m_audioConvertFn = NULL;
+
+		for (DWORD i = 0; i < g_cAudioFormats; i++)
+		{
+			if (g_AudioConversions[i].subtype == subtype)
+			{
+				m_audioConvertFn = g_AudioConversions[i].xform;
+				return S_OK;
+			}
+		}
+		return MF_E_INVALIDMEDIATYPE;
+
 	}
 
-	return MF_E_INVALIDMEDIATYPE;
+	return MF_E_INVALIDTYPE;
 }
 
 
@@ -745,13 +790,14 @@ int Codec::SetSourceAttribute(void* attribute, AttributeType type)
 	{
 		VideoCaptureAttribute *pattr = (VideoCaptureAttribute *)attribute;
 		m_videoSrcAttribute = *pattr; 
-		ChooseConversionFunction(pattr->format);
+		ChooseConversionFunction(type, pattr->format);
 
 	}
 	else if (type == ATTRIBUTE_TYPE_AUDIO)
 	{
 		AudioCaptureAttribute *pattr = (AudioCaptureAttribute *)attribute;
 		m_audioSrcAttribute = *pattr;
+		ChooseConversionFunction(type, pattr->format);
 	}
 	return 0;
 }
@@ -768,7 +814,7 @@ int Codec::SendFrame(MediaFrame * frame)
     if (frame->m_FrameType==FRAME_TYPE_VIDEO)
 	{
 
-		if (m_convertFn == NULL)
+		if (m_videoConvertFn == NULL)
 		{
 			return MF_E_INVALIDMEDIATYPE;
 		}
@@ -792,7 +838,7 @@ int Codec::SendFrame(MediaFrame * frame)
 			return -1;
 		}
 
-		m_convertFn(
+		m_videoConvertFn(
 			pic->img.plane[0],
 			pic->img.i_stride[0],
 			frame->m_pData,
@@ -806,18 +852,24 @@ int Codec::SendFrame(MediaFrame * frame)
     } 
     else if(frame->m_FrameType == FRAME_TYPE_AUDIO)
 	{
+		if (m_audioConvertFn == NULL)
+		{
+			return MF_E_INVALIDMEDIATYPE;
+		}
 
 		if (audioFrameQueue.size() >= MAX_AUDIO_FRAME || audioPacketQueue.size() >= MAX_AUDIO_PACKET)
 		{
 			return -1;
 		}
 
-        MediaFrame* sample = new MediaFrame();
+		MediaFrame* sample = new MediaFrame(FRAME_TYPE_AUDIO, MFAudioFormat_PCM, frame->m_dataSize * m_audioAttribute.bitwide * m_audioAttribute.channel / (frame->m_bitwide * frame->m_channels));
         sample->m_FrameType = frame->m_FrameType;
-        sample->m_pData = (BYTE*)malloc(frame->m_dataSize);
-        sample->m_dataSize = frame->m_dataSize;
+		sample->m_uTimestamp = frame->m_uTimestamp;
+		sample->m_channels = m_audioAttribute.channel;
+		sample->m_bitwide = m_audioAttribute.bitwide; //支持S16格式的音频
+		sample->m_samplerate = m_audioAttribute.samplerate;
 
-        memcpy(sample->m_pData, frame->m_pData, frame->m_dataSize);
+		m_audioConvertFn(frame, sample);
 
 		PushAudioFrame(sample);
     }
@@ -869,7 +921,7 @@ int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
     if (attribute != NULL)
     {
         m_audioAttribute = *attribute;
-        m_audioAttribute.bitwide = m_audioSrcAttribute.bitwide;
+        m_audioAttribute.bitwide = 16;
     }
 	return 0;
 }

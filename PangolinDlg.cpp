@@ -121,7 +121,7 @@ BOOL CPangolinDlg::OnInitDialog()
         }
     }
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CHANNEL);
-    hComBox->SetCurSel(0);
+    hComBox->SetCurSel(audioAttribute.channel-1);
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);
     hComBox->SetCurSel(0);
     hEdit = (CEdit*)this->GetDlgItem(IDC_AUDIO_BITRATE);
@@ -563,10 +563,10 @@ void CPangolinDlg::GetAudioAttribute(AudioCodecAttribute *pattr)
 		sel = ((CComboBox*)hChild)->GetCurSel();
 		if (sel==0)
 		{
-			pattr->channel = 2;
+			pattr->channel = 1;
 		}
 		else {
-			pattr->channel = 1;
+			pattr->channel = 2;
 		}
 
         hChild = this->GetDlgItem(IDC_AUDIO_CODEC);

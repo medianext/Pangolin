@@ -301,23 +301,7 @@ static void TransformImage_NV12(
 }
 
 
-typedef void(*IMAGE_TRANSFORM_FN)(
-    BYTE*       pDest,
-    LONG        lDestStride,
-    const BYTE* pSrc,
-    LONG        lSrcStride,
-    DWORD       dwWidthInPixels,
-    DWORD       dwHeightInPixels
-    );
-// Static table of output formats and conversion functions.
-struct ConversionFunction
-{
-    GUID               subtype;
-    IMAGE_TRANSFORM_FN xform;
-};
-
-
-static ConversionFunction g_FormatConversions[] =
+static VideoConversionFunction g_FormatConversions[] =
 {
     { MFVideoFormat_RGB32, TransformImage_RGB32 },
     { MFVideoFormat_RGB24, TransformImage_RGB24 },

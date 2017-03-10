@@ -3,16 +3,6 @@
 #include "Sink.h"
 
 
-typedef void(*IMAGE_TRANSFORM_FN)(
-    BYTE*       pDest,
-    LONG        lDestStride,
-    const BYTE* pSrc,
-    LONG        lSrcStride,
-    DWORD       dwWidthInPixels,
-    DWORD       dwHeightInPixels
-    );
-
-
 class Render :
     public Sink
 {

@@ -84,7 +84,7 @@ public:
     MediaPacket* GetAudioPacket();
 
 private:
-	HRESULT ChooseConversionFunction(REFGUID subtype);
+	HRESULT ChooseConversionFunction(AttributeType type, REFGUID subtype);
 
 	int InitCodec();
 	int UninitCodec();
@@ -126,7 +126,8 @@ private:
     HANDLE_AACENCODER        m_audioEncoder = NULL;
     x264_t*                  m_videoEncoder = NULL;
 
-	IMAGE_TRANSFORM_FN      m_convertFn;
+	IMAGE_TRANSFORM_FN      m_videoConvertFn;
+	AUDIO_TRANSFORM_FN      m_audioConvertFn;
 
 	CRITICAL_SECTION        m_vfMtx;
 	CRITICAL_SECTION        m_vpMtx;

@@ -14,6 +14,7 @@ class MediaFrame
 {
 public:
     MediaFrame();
+    (FrameType frameType, GUID subtype, DWORD dataSize);
     MediaFrame(IMFMediaBuffer*, FrameType type, int arg1, int arg2, int arg3);
     ~MediaFrame();
 

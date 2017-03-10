@@ -9,6 +9,18 @@ MediaFrame::MediaFrame():
 }
 
 
+MediaFrame::MediaFrame(FrameType frameType, GUID  subtype, DWORD dataSize)
+{
+	m_pData = (BYTE*)malloc(dataSize);
+	if (m_pData!=NULL)
+	{
+		m_dataSize = dataSize;
+		m_FrameType = frameType;
+		m_subtype = subtype;
+	}
+}
+
+
 MediaFrame::MediaFrame(IMFMediaBuffer* pBuffer, FrameType type, int arg1, int arg2, int arg3) :
 	m_uTimestamp(0)
 {
