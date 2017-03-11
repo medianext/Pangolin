@@ -58,7 +58,9 @@ private:
 
     char m_Url[256];
 
+#if REC_STREAM
     ofstream    h264file;
     ofstream    aacfile;
+#endif
 };
 

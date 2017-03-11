@@ -64,6 +64,11 @@ template <class T> void SafeRelease(T **ppT)
 #define LOWINT32(a) (a&0xFFFF)
 #define HIGHINT32(a) ((a>>16)&0xFFFF)
 
+#define REC_CAPTURE_RAW            0
+#define REC_CODEC_RAW              0
+#define REC_STREAM                 0
+
+
 #include "Capture.h"
 #include "Render.h"
 #include "Codec.h"

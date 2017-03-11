@@ -261,8 +261,11 @@ static void TransformImage_FLTP(MediaFrame* srcFrame, MediaFrame* dstFrame)
 	float* srcData = (float*)srcFrame->m_pData;
 	int sampleCnt = dstFrame->m_dataSize * 8 / dstFrame->m_bitwide;
 	if (srcFrame->m_channels==dstFrame->m_channels)
-	{
-		*dstData++ = (short)((*srcData++) * 32767.0f);
+    {
+        for (int i = 0; i < sampleCnt; i++)
+        {
+            *dstData++ = (short)((*srcData++) * 32767.0f);
+        }
 	}else if (srcFrame->m_channels==1 && dstFrame->m_channels==2)
 	{
 		for (int i = 0; i < sampleCnt; i++)
@@ -646,7 +649,14 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
         {
             Sleep(10);
 			continue;
-		}
+        }
+
+#if REC_CODEC_RAW
+        if (codec->m_yuvfile.is_open())
+        {
+            codec->m_yuvfile.write((char*)pic->img.plane[0], codec->m_videoAttribute.width * codec->m_videoAttribute.height * 3 / 2);
+        }
+#endif
 
 		x264_picture_t pic_out;
 		x264_nal_t *nal;
@@ -749,6 +759,13 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
             Sleep(10);
             continue;
         }
+
+#if REC_CODEC_RAW
+        if (codec->m_pcmfile.is_open())
+        {
+            codec->m_pcmfile.write((char*)frame->m_pData, frame->m_dataSize);
+        }
+#endif
 
         pinbuf = frame->m_pData;
         in_size = frame->m_dataSize;
@@ -939,6 +956,12 @@ int Codec::GetAudioCodecAttribute(const AudioCodecAttribute** attribute)
 
 int Codec::Start()
 {
+
+#if REC_CODEC_RAW
+    m_pcmfile.open("codec.pcm", ios::out | ios::binary);
+    m_yuvfile.open("codec.yuv", ios::out | ios::binary);
+#endif
+
 	InitCodec();
 	m_QuitCmd = 0;
     m_videoThread = CreateThread(NULL, 0, VideoEncodecThread, this, 0, NULL);
@@ -962,6 +985,20 @@ int Codec::Stop()
     WaitForSingleObject(m_videoThread, INFINITE);
     WaitForSingleObject(m_audioThread, INFINITE);
 	UninitCodec();
+
+#if REC_CODEC_RAW
+    if (m_pcmfile.is_open())
+    {
+        m_pcmfile.flush();
+        m_pcmfile.close();
+    }
+    if (m_yuvfile.is_open())
+    {
+        m_yuvfile.flush();
+        m_yuvfile.close();
+    }
+#endif
+
 	return 0;
 }
 

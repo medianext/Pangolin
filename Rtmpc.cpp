@@ -505,7 +505,12 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 			continue;
 		}
 
-        rtmpc->h264file.write((char *)videoPacket->m_pData, videoPacket->m_dataSize);
+#if REC_STREAM
+        if (rtmpc->h264file.is_open())
+        {
+            rtmpc->h264file.write((char *)videoPacket->m_pData, videoPacket->m_dataSize);
+        }
+#endif
 
 		if (rtmpc->m_bNeedKeyframe && !videoPacket->m_bKeyframe)
 		{
@@ -542,7 +547,13 @@ DoAudio:
             continue;
         }
 
-        rtmpc->aacfile.write((char *)audioPacket->m_pData, audioPacket->m_dataSize);
+#if REC_STREAM
+        if (rtmpc->aacfile.is_open())
+        {
+            rtmpc->aacfile.write((char *)audioPacket->m_pData, audioPacket->m_dataSize);
+        }
+#endif
+        
         delete audioPacket;
     }
 
@@ -582,6 +593,8 @@ int Rtmpc::GetStatus()
 
 int Rtmpc::Start()
 {
+
+#if REC_STREAM
     char filename[256];
     SYSTEMTIME time;
     GetLocalTime(&time);
@@ -589,6 +602,7 @@ int Rtmpc::Start()
     h264file.open(filename, ios::binary | ios::out);
     snprintf(filename, 256, "audio[%04d%02d%02d-%02d%02d%02d].aac", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
     aacfile.open(filename, ios::binary | ios::out);
+#endif
 
     m_QuitCmd = 0;
     m_pThread = CreateThread(NULL, 0, RtmpProcessThread, this, 0, NULL);
@@ -603,10 +617,18 @@ int Rtmpc::Stop()
     m_QuitCmd = 1;
     WaitForSingleObject(m_pThread, INFINITE);
 
-    h264file.flush();
-    h264file.close();
-    aacfile.flush();
-    aacfile.close();
+#if REC_STREAM
+    if (h264file.is_open())
+    {
+        h264file.flush();
+        h264file.close();
+    }
+    if (aacfile.is_open())
+    {
+        aacfile.flush();
+        aacfile.close();
+    }
+#endif
 
     return 0;
 }

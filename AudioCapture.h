@@ -46,6 +46,10 @@ private:
     AudioCaptureAttribute    m_attribute;
     vector<Sink *>           m_Sinks;
 
+#if REC_CAPTURE_RAW
+    ofstream                 m_file;
+#endif
+
 public:
     int AddSink(Sink * sink);
     int EnumAttribute(void* attribute);

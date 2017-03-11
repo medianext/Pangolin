@@ -203,6 +203,13 @@ HRESULT AudioCapture::OnReadSample(
                     vector<Sink*>::iterator iter = m_Sinks.begin();
                     for (; iter != m_Sinks.end(); ++iter)
                         (*iter)->SendFrame(&frame);
+
+#if REC_CAPTURE_RAW
+                    if (m_file.is_open())
+                    {
+                        m_file.write((char*)frame.m_pData, frame.m_dataSize);
+                    }
+#endif
                 }
             }
         }
@@ -266,6 +273,9 @@ int AudioCapture::GetConfig(void* attribute)
 
 int AudioCapture::Start()
 {
+#if REC_CAPTURE_RAW
+    m_file.open("capture.pcm", ios::out | ios::binary);
+#endif
 
     HRESULT hr = m_pReader->ReadSample(
         (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM,
@@ -281,6 +291,14 @@ int AudioCapture::Start()
 
 int AudioCapture::Stop()
 {
+#if REC_CAPTURE_RAW
+    if (m_file.is_open())
+    {
+        m_file.flush();
+        m_file.close();
+    }
+#endif
+
     return 0;
 }
 
