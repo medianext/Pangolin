@@ -429,6 +429,11 @@ int Codec::ConfigAudioCodec()
         return -1;
     }
 
+    if (aacEncoder_SetParam(m_audioEncoder, AACENC_CHANNELORDER, 1) != AACENC_OK) {
+        OutputDebugString(TEXT("Unable to set the channel order\n"));
+        return -1;
+    }
+
 	if (aacEncoder_SetParam(m_audioEncoder, AACENC_BITRATEMODE, 0) != AACENC_OK) {
 		OutputDebugString(TEXT("Unable to set the bitrate mode\n"));
 		return -1;
@@ -437,7 +442,13 @@ int Codec::ConfigAudioCodec()
 	if (aacEncoder_SetParam(m_audioEncoder, AACENC_BITRATE, m_audioAttribute.bitrate) != AACENC_OK) {
 		OutputDebugString(TEXT("Unable to set the bitrate\n"));
 		return -1;
-	}
+    }
+
+    if (aacEncoder_SetParam(m_audioEncoder, AACENC_TRANSMUX, 2) != AACENC_OK) {
+        OutputDebugString(TEXT("Unable to set the transport type\n"));
+        return -1;
+    }
+
 	if (aacEncEncode(m_audioEncoder, NULL, NULL, NULL, NULL) != AACENC_OK) {
 		OutputDebugString(TEXT("Unable to initialize the encoder\n"));
 		return 1;
@@ -707,6 +718,7 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
 {
     Codec* codec = (Codec*)lpParam;
+    AudioCodecAttribute attr = codec->m_audioAttribute;
 
     AACENC_InfoStruct info = { 0 };
     if (aacEncInfo(codec->m_audioEncoder, &info) != AACENC_OK) {
@@ -715,8 +727,9 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
     }
 
     AACENC_BufDesc inbuf = { 0 };
-    void* pinbuf = NULL;
-    int in_size = info.maxOutBufBytes;
+    int in_cursize = 0;
+    int in_size = 1024 * attr.channel * attr.bitwide / 8;
+    void* pinbuf = malloc(in_size);
     int in_identifier = IN_AUDIO_DATA;
     int in_elem_size = 2;
 
@@ -727,12 +740,12 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
     inbuf.bufSizes = &in_size;
 
     AACENC_BufDesc outbuf = { 0 };
-    void* poutbuf = malloc(info.maxOutBufBytes);
+    int out_size = info.maxOutBufBytes;
+    void* poutbuf = malloc(out_size);
     if (poutbuf==NULL)
     {
         return -1;
     }
-    int out_size = info.maxOutBufBytes;
     int out_elem_size = 1;
     int out_identifier = OUT_BITSTREAM_DATA;
     outbuf.numBufs = 1;
@@ -742,9 +755,9 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
     outbuf.bufElSizes = &out_elem_size;
 
     AACENC_InArgs in_args = { 0 };
-    AACENC_OutArgs out_args = { 0 };
+    in_args.numInSamples = 1024 * attr.channel;
 
-    AudioCodecAttribute attr = codec->m_audioAttribute;
+    AACENC_OutArgs out_args = { 0 };
 
     while (1)
     {
@@ -767,30 +780,49 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
         }
 #endif
 
-        pinbuf = frame->m_pData;
-        in_size = frame->m_dataSize;
+        int pframeleft = frame->m_dataSize;
 
-        in_args.numInSamples = inbuf.bufSizes[0] / (attr.channel * attr.bitwide / 8);
-
-        AACENC_ERROR err;
-        if ((err = aacEncEncode(codec->m_audioEncoder, &inbuf, &outbuf, &in_args, &out_args)) != AACENC_OK) {
-            if (err == AACENC_ENCODE_EOF)
-                break;
-            OutputDebugString(TEXT("Encoding failed\n"));
-            break;
-        }
-        int size = out_args.numOutBytes;
-        if (size)
+        while (1)
         {
-            MediaPacket* packet = new MediaPacket(PACKET_TYPE_AUDIO, size);
-            memcpy(packet->m_pData, outbuf.bufs[0], size);
+            if (pframeleft<=0)
+            {
+                break;
+            }
 
-            codec->PushAudioPacket(packet);
+            if (pframeleft < in_size - in_cursize)
+            {
+                memcpy(&((char*)pinbuf)[in_cursize], &frame->m_pData[frame->m_dataSize - pframeleft], pframeleft);
+                in_cursize += pframeleft;
+                pframeleft = 0;
+                break;
+            }
+            else
+            {
+                memcpy(&((char*)pinbuf)[in_cursize], &frame->m_pData[frame->m_dataSize - pframeleft], in_size - in_cursize);
+                pframeleft -= in_size - in_cursize;
+                in_cursize = 0;
+            }
+
+            AACENC_ERROR err;
+            if ((err = aacEncEncode(codec->m_audioEncoder, &inbuf, &outbuf, &in_args, &out_args)) != AACENC_OK) {
+                if (err != AACENC_ENCODE_EOF)
+                    OutputDebugString(TEXT("Encoding failed\n"));
+                break;
+            }
+            int size = out_args.numOutBytes;
+            if (size)
+            {
+                MediaPacket* packet = new MediaPacket(PACKET_TYPE_AUDIO, size);
+                memcpy(packet->m_pData, outbuf.bufs[0], size);
+
+                codec->PushAudioPacket(packet);
+            }
         }
-        //free(frame->m_pData);
+
         delete frame;
     }
 
+    free(pinbuf);
     free(poutbuf);
 
 	return 0;

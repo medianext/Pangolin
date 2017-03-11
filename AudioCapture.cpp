@@ -95,13 +95,12 @@ AudioCapture::AudioCapture(void * priv) :
         if (SUCCEEDED(hr))
         {
 
-            UINT32 uChannel, nSamplesRate, wBitsPerSample, wSamplesPerBlock;
+            UINT32 uChannel, nSamplesRate, wBitsPerSample;
             GUID subType;
             hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
             hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
             hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
             hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
-            hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_BLOCK, &wSamplesPerBlock);
             m_attribute.format = subType;
             m_attribute.channel = uChannel;
             m_attribute.samplerate = nSamplesRate;
