@@ -35,8 +35,8 @@ private:
     int Disconnect();
     int SetChunkSize(int size);
     int SendMetadata();
-    int SendVideoHeader(unsigned char * pdata, int size);
-    int SendAudioHeader();
+    int SendVideoHeader(MediaPacket* packet);
+    int SendAudioHeader(MediaPacket* packet);
     int SendVideoData(MediaPacket* packet);
     int SendAudioData(MediaPacket* packet);
 

@@ -106,13 +106,13 @@ int Rtmpc::DetectVideoData(unsigned char* pdata, int size, unsigned char **ppdat
 	while (i < size)
 	{
 		int tmp = i;
-		if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i++] == 0x01 || (pdata[i] == 0x00 && pdata[i++] == 0x01)))
+		if (size - i > 4 && ( (pdata[i++] == 0x00) && (pdata[i++] == 0x00) && (pdata[i++] == 0x01 || (pdata[i-1] == 0x00 && pdata[i++] == 0x01)) ))
 		{
 			int start = i;
 			while (i < size)
 			{
 				int tmp2 = i;
-				if (size - i>4 && pdata[i++] == 0x00 && pdata[i++] == 0x00 && (pdata[i] == 0x01 || (pdata[i] == 0x00 && pdata[i + 1] == 0x01)))
+				if (size - i>4 && ( (pdata[i++] == 0x00) && (pdata[i++] == 0x00) && (pdata[i] == 0x01 || (pdata[i] == 0x00 && pdata[i + 1] == 0x01)) ))
 				{
 					i = tmp2;
 					break;
@@ -122,15 +122,15 @@ int Rtmpc::DetectVideoData(unsigned char* pdata, int size, unsigned char **ppdat
 				}
 			}
 
-//  			if ((pdata[start] & 0x1F) <= 5)
-//  			{
+ 			if ((pdata[start] & 0x1F) <= 5)
+ 			{
 				*ppdata = &pdata[start];
 				if ((pdata[start] & 0x1F) >= 5)
 				{
 					*type = 1;
 				}
 				return i - start;
-//			}
+			}
 		}
 		else {
 			i = tmp + 1;
@@ -296,15 +296,15 @@ int Rtmpc::SendMetadata()
 }
 
 
-int Rtmpc::SendVideoHeader(unsigned char * pdata, int size)
+int Rtmpc::SendVideoHeader(MediaPacket* packet)
 {
-	if (pdata == NULL|| size <=0)
+	if (packet == NULL || packet->m_pData == NULL|| packet->m_dataSize <=0)
 	{
 		return -1;
 	}
 
 	H264Header head = { 0 };
-	if (ParseSpsPps(pdata, size, &head) < 0)
+	if (ParseSpsPps(packet->m_pData, packet->m_dataSize, &head) < 0)
 	{
 		return -2;
 	}
@@ -348,7 +348,7 @@ int Rtmpc::SendVideoHeader(unsigned char * pdata, int size)
 	pkt.m_nChannel = 0x04;
 	pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
 	pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
-	pkt.m_nInfoField2 = 0;
+	pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
 	pkt.m_hasAbsTimestamp = 0;
 	pkt.m_nTimeStamp = 0;
 	pkt.m_nBodySize = ptr - pkt.m_body;
@@ -369,7 +369,7 @@ int Rtmpc::SendVideoHeader(unsigned char * pdata, int size)
 }
 
 
-int Rtmpc::SendAudioHeader()
+int Rtmpc::SendAudioHeader(MediaPacket* packet)
 {
     return 0;
 }
@@ -425,7 +425,7 @@ int Rtmpc::SendVideoData(MediaPacket* packet)
 	pkt.m_nChannel = 0x04;
 	pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
 	pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
-	pkt.m_nInfoField2 = 0;
+	pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
 	pkt.m_hasAbsTimestamp = 0;
 	pkt.m_nTimeStamp = packet->m_uTimestamp - m_uFirstTimestamp;
 	pkt.m_nBodySize = ptr - pkt.m_body;
@@ -496,9 +496,14 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 
 		if (bFirst && videoPacket->m_bKeyframe)
 		{
-			//rtmpc->SendAudioHeader();
 			rtmpc->m_uFirstTimestamp = videoPacket->m_uTimestamp;
 			bFirst = false;
+			ret = rtmpc->SendVideoHeader(videoPacket);
+			if (ret < 0)
+			{
+				OutputDebugString(TEXT("Rtmpc send video head failed!\n"));
+			}
+			//rtmpc->SendAudioHeader();
 		}else if (bFirst && !videoPacket->m_bKeyframe)
 		{
 			delete videoPacket;
@@ -520,15 +525,6 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 		{
 			rtmpc->m_bNeedKeyframe = false;
 		}
-
-        if (videoPacket->m_bKeyframe)
-        {
-            ret = rtmpc->SendVideoHeader(videoPacket->m_pData, videoPacket->m_dataSize);
-            if (ret < 0)
-            {
-                OutputDebugString(TEXT("Rtmpc send video head failed!\n"));
-            }
-        }
 
 		ret = rtmpc->SendVideoData(videoPacket);
 		if (ret < 0)

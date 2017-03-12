@@ -28,8 +28,8 @@ __forceinline YUVQUAD ConvertRGBToYCrCb(
 	YUVQUAD yuv;
 
 	yuv.y = Clip(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16);
-	yuv.u = Clip(((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128);
-	yuv.v = Clip(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
+	yuv.u = Clip(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
+	yuv.v = Clip(((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128);
 
 	return yuv;
 }
@@ -373,15 +373,15 @@ int Codec::ConfigVideoCodec()
     param.i_csp = X264_CSP_I420;
     param.i_width = m_videoAttribute.width;
     param.i_height = m_videoAttribute.height;
+	param.b_vfr_input = 0;
     param.i_fps_num = m_videoAttribute.fps;
     param.i_fps_den = 1;
-	param.i_timebase_den = 1000*1000;
-	param.i_timebase_num = 1;
-    param.i_keyint_max = m_videoAttribute.fps;
-    param.b_intra_refresh = 1;
+	param.i_keyint_max = m_videoAttribute.fps;
+	param.i_keyint_min = 5;
+    param.b_intra_refresh = 0;
     param.b_annexb = 1;
 
-    param.rc.i_rc_method = X264_RC_CRF;
+    param.rc.i_rc_method = X264_RC_ABR;
     param.rc.i_bitrate = m_videoAttribute.bitrate;
 
     ret = x264_param_apply_profile(&param, "high");

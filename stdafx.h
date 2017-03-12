@@ -66,7 +66,7 @@ template <class T> void SafeRelease(T **ppT)
 
 #define REC_CAPTURE_RAW            0
 #define REC_CODEC_RAW              0
-#define REC_STREAM                 0
+#define REC_STREAM                 1
 
 
 #include "Capture.h"
