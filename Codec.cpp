@@ -759,6 +759,8 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
 
     AACENC_OutArgs out_args = { 0 };
 
+    unsigned long long timestamp = 0;
+
     while (1)
     {
         if (codec->m_QuitCmd == 1)
@@ -803,6 +805,15 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
                 in_cursize = 0;
             }
 
+            if (timestamp == 0)
+            {
+                timestamp = frame->m_uTimestamp;
+            }
+            else
+            {
+                timestamp += 1024 * 1000 * 1000 / attr.samplerate;
+            }
+
             AACENC_ERROR err;
             if ((err = aacEncEncode(codec->m_audioEncoder, &inbuf, &outbuf, &in_args, &out_args)) != AACENC_OK) {
                 if (err != AACENC_ENCODE_EOF)
@@ -814,6 +825,7 @@ DWORD WINAPI Codec::AudioEncodecThread(LPVOID lpParam)
             {
                 MediaPacket* packet = new MediaPacket(PACKET_TYPE_AUDIO, size);
                 memcpy(packet->m_pData, outbuf.bufs[0], size);
+                packet->m_uTimestamp = timestamp / 1000;
 
                 codec->PushAudioPacket(packet);
             }
