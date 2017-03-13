@@ -403,9 +403,9 @@ int Codec::ConfigAudioCodec()
     int aot = 2;
     switch (m_audioAttribute.profile)
     {
-    case 0: aot = 2;  break;
-    case 1: aot = 5;  break;
-    case 2: aot = 29; break;
+    case 0: aot = AOT_AAC_LC;  break;
+    case 1: aot = AOT_SBR;  break;
+    case 2: aot = AOT_PS; break;
     }
     if (aacEncoder_SetParam(m_audioEncoder, AACENC_AOT, aot) != AACENC_OK) {
         OutputDebugString(TEXT("Unable to set the AOT\n"));
@@ -444,7 +444,7 @@ int Codec::ConfigAudioCodec()
 		return -1;
     }
 
-    if (aacEncoder_SetParam(m_audioEncoder, AACENC_TRANSMUX, 2) != AACENC_OK) {
+    if (aacEncoder_SetParam(m_audioEncoder, AACENC_TRANSMUX, TT_MP4_ADTS) != AACENC_OK) {
         OutputDebugString(TEXT("Unable to set the transport type\n"));
         return -1;
     }

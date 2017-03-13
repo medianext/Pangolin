@@ -369,85 +369,195 @@ int Rtmpc::SendVideoHeader(MediaPacket* packet)
 }
 
 
-int Rtmpc::SendAudioHeader(MediaPacket* packet)
+int Rtmpc::SendVideoData(MediaPacket* packet)
 {
+    if (packet == NULL || packet->m_pData == NULL || packet->m_dataSize <= 0)
+    {
+        return -1;
+    }
+
+    unsigned char* prealdata = NULL;
+    int realsize = 0;
+    int type = 0;
+
+    realsize = DetectVideoData(packet->m_pData, packet->m_dataSize, &prealdata, &type);
+    if (prealdata == NULL)
+    {
+        return -2;
+    }
+
+    int maxBodySize = packet->m_dataSize + 9;
+    RTMPPacket pkt = { 0 };
+    if (RTMPPacket_Alloc(&pkt, maxBodySize) == 0)
+    {
+        return -3;
+    }
+
+    char* ptr = pkt.m_body;
+    char* pend = pkt.m_body + maxBodySize;
+
+    if (type) {
+        *ptr++ = 0x17;
+    }
+    else {
+        *ptr++ = 0x27;
+    }
+    *ptr++ = 0x01;
+    *ptr++ = 0x00;
+    *ptr++ = 0x00;
+    *ptr++ = 0x00;
+
+    *ptr++ = (realsize >> 24) & 0xff;
+    *ptr++ = (realsize >> 16) & 0xff;
+    *ptr++ = (realsize >> 8) & 0xff;
+    *ptr++ = realsize & 0xff;
+
+    memcpy(ptr, prealdata, realsize);
+
+    ptr += realsize;
+
+    pkt.m_nChannel = 0x04;
+    pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
+    pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
+    pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
+    pkt.m_hasAbsTimestamp = 0;
+    pkt.m_nTimeStamp = packet->m_uTimestamp - m_uFirstTimestamp;
+    pkt.m_nBodySize = ptr - pkt.m_body;
+
+    if (!RTMP_IsConnected(m_pRtmp))
+    {
+        return -4;
+    }
+
+    if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
+    {
+        return -5;
+    }
+
+    RTMPPacket_Free(&pkt);
+
     return 0;
 }
 
 
-int Rtmpc::SendVideoData(MediaPacket* packet)
+int Rtmpc::SendAudioHeader(MediaPacket* packet)
 {
-	if (packet==NULL || packet->m_pData == NULL || packet->m_dataSize <= 0)
-	{
-		return -1;
-	}
+    int maxBodySize = 4;
+    RTMPPacket pkt = { 0 };
+    if (RTMPPacket_Alloc(&pkt, maxBodySize) == 0)
+    {
+        return -1;
+    }
 
-	unsigned char* prealdata = NULL;
-	int realsize = 0;
-	int type = 0;
+    char* ptr = pkt.m_body;
+    char* pend = pkt.m_body + maxBodySize;
 
-	realsize = DetectVideoData(packet->m_pData, packet->m_dataSize, &prealdata, &type);
-	if (prealdata==NULL)
-	{
-		return -2;
-	}
+    const AudioCodecAttribute * pAudioAttr = NULL;
+    m_pCodec->GetAudioCodecAttribute(&pAudioAttr);
 
-	int maxBodySize = packet->m_dataSize + 9;
-	RTMPPacket pkt = { 0 };
-	if (RTMPPacket_Alloc(&pkt, maxBodySize) == 0)
-	{
-		return -3;
-	}
+    int nAOT, nSamplerate, nChannel;
 
-	char* ptr = pkt.m_body;
-	char* pend = pkt.m_body + maxBodySize;
+    switch (pAudioAttr->profile)
+    {
+    case 0: nAOT = 2;  break;
+    case 1: nAOT = 5;  break;
+    case 2: nAOT = 29; break;
+    }
 
-	if (type){
-		*ptr++ = 0x17;
-	}
-	else {
-		*ptr++ = 0x27;
-	}
-	*ptr++ = 0x01;
-	*ptr++ = 0x00;
-	*ptr++ = 0x00;
-	*ptr++ = 0x00;
+    switch (pAudioAttr->samplerate)
+    {
+    case 96000: nSamplerate = 0;   break;
+    case 88200: nSamplerate = 1;   break;
+    case 64000: nSamplerate = 2;   break;
+    case 48000: nSamplerate = 3;   break;
+    case 44100: nSamplerate = 4;   break;
+    case 32000: nSamplerate = 5;   break;
+    case 24000: nSamplerate = 6;   break;
+    case 22050: nSamplerate = 7;   break;
+    case 16000: nSamplerate = 8;   break;
+    case 12000: nSamplerate = 9;   break;
+    case 11025: nSamplerate = 10;  break;
+    case 8000:  nSamplerate = 11;  break;
+    }
 
-	*ptr++ = (realsize >> 24) & 0xff;
-	*ptr++ = (realsize >> 16) & 0xff;
-	*ptr++ = (realsize >> 8) & 0xff;
-	*ptr++ = realsize & 0xff;
+    switch (pAudioAttr->channel)
+    {
+    case 1: nChannel = 1; break;
+    case 2: nChannel = 2; break;
+    }
 
-	memcpy(ptr, prealdata, realsize);
+    *ptr++ = 0xAF;
+    *ptr++ = 0x00;
+    *ptr++ = (nAOT << 3) | (nSamplerate >> 1);
+    *ptr++ = (nSamplerate << 7) | (nChannel << 3);
 
-	ptr += realsize;
+    pkt.m_nChannel = 0x04;
+    pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+    pkt.m_packetType = RTMP_PACKET_TYPE_AUDIO;
+    pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
+    pkt.m_hasAbsTimestamp = 0;
+    pkt.m_nTimeStamp = 0;
+    pkt.m_nBodySize = ptr - pkt.m_body;
 
-	pkt.m_nChannel = 0x04;
-	pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
-	pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
-	pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
-	pkt.m_hasAbsTimestamp = 0;
-	pkt.m_nTimeStamp = packet->m_uTimestamp - m_uFirstTimestamp;
-	pkt.m_nBodySize = ptr - pkt.m_body;
+    if (!RTMP_IsConnected(m_pRtmp))
+    {
+        return -1;
+    }
 
-	if (!RTMP_IsConnected(m_pRtmp))
-	{
-		return -4;
-	}
+    if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
+    {
+        return -1;
+    }
 
-	if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
-	{
-		return -5;
-	}
+    RTMPPacket_Free(&pkt);
 
-	RTMPPacket_Free(&pkt);
-
-	return 0;
+    return 0;
 }
 
 
 int Rtmpc::SendAudioData(MediaPacket* packet)
 {
+    if (packet == NULL || packet->m_pData == NULL || packet->m_dataSize <= 7)
+    {
+        return -1;
+    }
+
+    int maxBodySize = packet->m_dataSize - 7 + 2;
+    RTMPPacket pkt = { 0 };
+    if (RTMPPacket_Alloc(&pkt, maxBodySize) == 0)
+    {
+        return -1;
+    }
+
+    char* ptr = pkt.m_body;
+    char* pend = pkt.m_body + maxBodySize;
+
+    *ptr++ = 0xAF;
+    *ptr++ = 0x01;
+
+    memcpy(ptr, &packet->m_pData[7], packet->m_dataSize-7);
+    ptr += packet->m_dataSize - 7;
+
+    pkt.m_nChannel = 0x04;
+    pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+    pkt.m_packetType = RTMP_PACKET_TYPE_AUDIO;
+    pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
+    pkt.m_hasAbsTimestamp = 0;
+    pkt.m_nTimeStamp = packet->m_uTimestamp - m_uFirstTimestamp;
+    pkt.m_nBodySize = ptr - pkt.m_body;
+
+    if (!RTMP_IsConnected(m_pRtmp))
+    {
+        return -1;
+    }
+
+    if (RTMP_SendPacket(m_pRtmp, &pkt, 1) == 0)
+    {
+        return -1;
+    }
+
+    RTMPPacket_Free(&pkt);
+
     return 0;
 }
 
@@ -503,7 +613,11 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 			{
 				OutputDebugString(TEXT("Rtmpc send video head failed!\n"));
 			}
-			//rtmpc->SendAudioHeader();
+            rtmpc->SendAudioHeader(NULL);
+            if (ret < 0)
+            {
+                OutputDebugString(TEXT("Rtmpc send audio head failed!\n"));
+            }
 		}else if (bFirst && !videoPacket->m_bKeyframe)
 		{
 			delete videoPacket;
@@ -549,6 +663,12 @@ DoAudio:
             rtmpc->aacfile.write((char *)audioPacket->m_pData, audioPacket->m_dataSize);
         }
 #endif
+
+        ret = rtmpc->SendAudioData(audioPacket);
+        if (ret < 0)
+        {
+            OutputDebugString(TEXT("Rtmpc send audio data failed!\n"));
+        }
         
         delete audioPacket;
     }

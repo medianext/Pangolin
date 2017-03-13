@@ -36,8 +36,8 @@ private:
     int SetChunkSize(int size);
     int SendMetadata();
     int SendVideoHeader(MediaPacket* packet);
-    int SendAudioHeader(MediaPacket* packet);
     int SendVideoData(MediaPacket* packet);
+    int SendAudioHeader(MediaPacket* packet);
     int SendAudioData(MediaPacket* packet);
 
 	int ParseSpsPps(unsigned char* pdata, int size, H264Header* head);
