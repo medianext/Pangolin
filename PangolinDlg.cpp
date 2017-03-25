@@ -36,8 +36,8 @@ BEGIN_MESSAGE_MAP(CPangolinDlg, CDialogEx)
 	ON_WM_TIMER()
 	ON_NOTIFY(TCN_SELCHANGE, IDC_SETTING, &CPangolinDlg::OnTabChange)
 	ON_BN_CLICKED(IDC_PUSH, &CPangolinDlg::OnBnClickedPush)
-	ON_CBN_SELCHANGE(IDC_VIDEO_RESOLUTION, &CPangolinDlg::OnVideoChange)
-	ON_CBN_SELCHANGE(IDC_AUDIO_SAMPLERATE, &CPangolinDlg::OnAudioChange)
+	ON_CBN_SELCHANGE(IDC_VIDEO_FORMAT, &CPangolinDlg::OnVideoChange)
+	ON_CBN_SELCHANGE(IDC_AUDIO_FORMAT, &CPangolinDlg::OnAudioChange)
 	ON_CBN_SELCHANGE(IDC_VIDEO_CAP, &CPangolinDlg::OnVideoCaptureChange)
 	ON_CBN_SELCHANGE(IDC_AUDIO_CAP, &CPangolinDlg::OnAudioCaptureChange)
 END_MESSAGE_MAP()
@@ -57,10 +57,9 @@ BOOL CPangolinDlg::OnInitDialog()
 	// TODO: 在此添加额外的初始化代码
     InitControlPosition();
     CTabCtrl* hTab = (CTabCtrl*)GetDlgItem(IDC_SETTING);
-    hTab->InsertItem(0, TEXT("视频参数"));
-    hTab->InsertItem(1, TEXT("音频参数"));
-    hTab->InsertItem(2, TEXT("采集参数"));
-    hTab->InsertItem(3, TEXT("关于"));
+    hTab->InsertItem(0, TEXT("编码参数"));
+	hTab->InsertItem(1, TEXT("采集参数"));
+	hTab->InsertItem(2, TEXT("关于"));
 
     // 初始化采集器
 	Capture::Init();
@@ -71,73 +70,14 @@ BOOL CPangolinDlg::OnInitDialog()
     CComboBox* hComBox = NULL;
     CEdit* hEdit = NULL;
     CString str;
-    int vCnt, aCnt;
-
-	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
-    VideoCaptureAttribute videoAttribute = { 0 };
-	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_RESOLUTION);
-    vCnt = videoCapture->GetSupportAttribute((void*)&pVideoAttribute);
-    videoCapture->GetConfig(&videoAttribute);
-    int cur_resolution = MAKEINT32(videoAttribute.width, videoAttribute.height);
-    set<wstring> strset;
-    for (int i = 0, j=0; i < vCnt; i++)
-    {
-        wchar_t str[20];
-        swprintf(str, L"%dx%dp%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
-        wstring s = str;
-        if (strset.count(s)==0)
-        {
-            strset.insert(s);
-            int resolution = MAKEINT32((*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height);
-            hComBox->AddString(str);
-            hComBox->SetItemData(j, resolution);
-            if (cur_resolution == resolution)
-            {
-                hComBox->SetCurSel(j);
-            }
-            j++;
-        }
-    }
-    //hComBox->SetCurSel(0);
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_FPS);
-    str.Format(TEXT("%d"), videoAttribute.fps);
-    hComBox->SetWindowText(str);
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CODEC);
-    hComBox->SetCurSel(0);
-    hEdit = (CEdit*)this->GetDlgItem(IDC_VIDEO_BITRATE);
-    hEdit->SetWindowTextW(L"2000");
-
-
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
-    AudioCaptureAttribute audioAttribute = { 0 };
-    vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
-    aCnt = audioCapture->GetSupportAttribute((void*)&pAudioAttribute);
-    audioCapture->GetConfig(&audioAttribute);
-    int cur_samplerate = audioAttribute.samplerate;
-    for (int i = 0; i < aCnt; i++)
-    {
-        wchar_t str[20];
-        swprintf(str, L"%d", (*pAudioAttribute)[i]->samplerate);
-        hComBox->AddString(str);
-        if (cur_samplerate == (*pAudioAttribute)[i]->samplerate)
-        {
-            hComBox->SetCurSel(i);
-        }
-    }
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CHANNEL);
-    hComBox->SetCurSel(audioAttribute.channel-1);
-    hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);
-    hComBox->SetCurSel(0);
-    hEdit = (CEdit*)this->GetDlgItem(IDC_AUDIO_BITRATE);
-    hEdit->SetWindowTextW(L"64000");
-
+	int vCnt, aCnt;
 
 	vector<CString *> strList;
 	vector<CString *>::iterator it;
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CAP);
 	vCnt = Capture::EnumVideoCature(&strList);
-	for (it=strList.begin(); it!=strList.end();)
+	for (it = strList.begin(); it != strList.end();)
 	{
 		CString * str = *it;
 		hComBox->AddString(*str);
@@ -157,13 +97,63 @@ BOOL CPangolinDlg::OnInitDialog()
 	}
 	hComBox->SetCurSel(0);
 
+	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
+    VideoCaptureAttribute videoAttribute = { 0 };
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_FORMAT);
+    vCnt = videoCapture->GetSupportAttribute((void*)&pVideoAttribute);
+    videoCapture->GetConfig(&videoAttribute);
+    set<wstring> strset;
+    for (int i = 0, j=0; i < vCnt; i++)
+    {
+        wchar_t str[20];
+        swprintf(str, L"%dx%dp%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
+        wstring s = str;
+        if (strset.count(s)==0)
+        {
+            strset.insert(s);
+            hComBox->AddString(str);
+            hComBox->SetItemData(j, (DWORD_PTR)(*pVideoAttribute)[i]);
+            if ((*pVideoAttribute)[i]->width == videoAttribute.width && (*pVideoAttribute)[i]->height== videoAttribute.height && (*pVideoAttribute)[i]->fps == videoAttribute.fps)
+            {
+                hComBox->SetCurSel(j);
+            }
+            j++;
+        }
+	}
+
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_FORMAT);
+	AudioCaptureAttribute audioAttribute = { 0 };
+	vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
+	aCnt = audioCapture->GetSupportAttribute((void*)&pAudioAttribute);
+	audioCapture->GetConfig(&audioAttribute);
+	for (int i = 0; i < aCnt; i++)
+	{
+		wchar_t str[20];
+		swprintf(str, TEXT("%s,%d,%d位"), (*pAudioAttribute)[i]->channel==2? TEXT("立体声"): TEXT("单声道"),(*pAudioAttribute)[i]->samplerate, (*pAudioAttribute)[i]->bitwide);
+		hComBox->AddString(str);
+		hComBox->SetItemData(i, (DWORD_PTR)(*pAudioAttribute)[i]);
+		if (audioAttribute.samplerate == (*pAudioAttribute)[i]->samplerate && audioAttribute.channel == (*pAudioAttribute)[i]->channel && audioAttribute.bitwide == (*pAudioAttribute)[i]->bitwide)
+		{
+			hComBox->SetCurSel(i);
+		}
+	}
+
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CODEC);
+	hComBox->SetCurSel(0);
+	hEdit = (CEdit*)this->GetDlgItem(IDC_VIDEO_BITRATE);
+	hEdit->SetWindowTextW(L"2000");
+
+	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);
+	hComBox->SetCurSel(0);
+	hEdit = (CEdit*)this->GetDlgItem(IDC_AUDIO_BITRATE);
+	hEdit->SetWindowTextW(L"64000");
+
     hEdit = (CEdit*)this->GetDlgItem(IDC_RTMPURL);
     hEdit->SetWindowTextW(L"rtmp://127.0.0.1/live/test");
     hEdit->SetSel(100);
     hEdit->SetFocus();
 
-    ShowVideoParamTab(SW_SHOW);
-    ShowAudioParamTab(SW_HIDE);
+    ShowCodecParamTab(SW_SHOW);
     ShowCaptureParamTab(SW_HIDE);
     ShowAboutTab(SW_HIDE);
 
@@ -318,41 +308,23 @@ void CPangolinDlg::InitControlPosition()
     hChild = this->GetDlgItem(IDC_LOG);
     hChild->SetWindowPos(NULL, 314, 370, 260, 180, 0);
 
-    //视频参数
-    hChild = this->GetDlgItem(IDC_STATIC2);
-    hChild->SetWindowPos(NULL, 30, 414, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
-    hChild->SetWindowPos(NULL, 90, 410, 140, 24, 0);
-    hChild = this->GetDlgItem(IDC_STATIC3);
-    hChild->SetWindowPos(NULL, 30, 446, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_VIDEO_FPS);
-    hChild->SetWindowPos(NULL, 90, 442, 140, 24, 0);
-    hChild = this->GetDlgItem(IDC_STATIC4);
-    hChild->SetWindowPos(NULL, 30, 478, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
-    hChild->SetWindowPos(NULL, 90, 474, 140, 24, 0);
-    hChild = this->GetDlgItem(IDC_STATIC5);
-    hChild->SetWindowPos(NULL, 30, 510, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
-    hChild->SetWindowPos(NULL, 90, 506, 140, 24, 0);
-
-    //音频参数
+    //编码参数
     hChild = this->GetDlgItem(IDC_STATIC10);
-    hChild->SetWindowPos(NULL, 30, 414, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
-    hChild->SetWindowPos(NULL, 90, 410, 140, 24, 0);
+    hChild->SetWindowPos(NULL, 30, 414, 60, 18, 0);
+    hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
+    hChild->SetWindowPos(NULL, 110, 410, 140, 24, 0);
     hChild = this->GetDlgItem(IDC_STATIC11);
-    hChild->SetWindowPos(NULL, 30, 446, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
-    hChild->SetWindowPos(NULL, 90, 442, 140, 24, 0);
+    hChild->SetWindowPos(NULL, 30, 446, 60, 18, 0);
+    hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
+    hChild->SetWindowPos(NULL, 110, 442, 140, 24, 0);
     hChild = this->GetDlgItem(IDC_STATIC12);
-    hChild->SetWindowPos(NULL, 30, 478, 40, 18, 0);
+    hChild->SetWindowPos(NULL, 30, 478, 60, 18, 0);
     hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
-    hChild->SetWindowPos(NULL, 90, 474, 140, 24, 0);
+    hChild->SetWindowPos(NULL, 110, 474, 140, 24, 0);
     hChild = this->GetDlgItem(IDC_STATIC13);
-    hChild->SetWindowPos(NULL, 30, 510, 40, 18, 0);
+    hChild->SetWindowPos(NULL, 30, 510, 60, 18, 0);
     hChild = this->GetDlgItem(IDC_AUDIO_BITRATE);
-    hChild->SetWindowPos(NULL, 90, 506, 140, 24, 0);
+    hChild->SetWindowPos(NULL, 110, 506, 140, 24, 0);
 
     //采集源
     hChild = this->GetDlgItem(IDC_STATIC20);
@@ -360,9 +332,17 @@ void CPangolinDlg::InitControlPosition()
     hChild = this->GetDlgItem(IDC_VIDEO_CAP);
     hChild->SetWindowPos(NULL, 90, 410, 185, 24, 0);
     hChild = this->GetDlgItem(IDC_STATIC21);
-    hChild->SetWindowPos(NULL, 30, 446, 40, 18, 0);
-    hChild = this->GetDlgItem(IDC_AUDIO_CAP);
-    hChild->SetWindowPos(NULL, 90, 442, 185, 24, 0);
+	hChild->SetWindowPos(NULL, 30, 446, 50, 18, 0);
+	hChild = this->GetDlgItem(IDC_VIDEO_FORMAT);
+	hChild->SetWindowPos(NULL, 90, 442, 185, 24, 0);
+	hChild = this->GetDlgItem(IDC_STATIC22);
+	hChild->SetWindowPos(NULL, 30, 478, 40, 18, 0);
+	hChild = this->GetDlgItem(IDC_AUDIO_CAP);
+	hChild->SetWindowPos(NULL, 90, 474, 185, 24, 0);
+	hChild = this->GetDlgItem(IDC_STATIC23);
+	hChild->SetWindowPos(NULL, 30, 510, 50, 18, 0);
+	hChild = this->GetDlgItem(IDC_AUDIO_FORMAT);
+	hChild->SetWindowPos(NULL, 90, 506, 185, 24, 0);
 
     //关于
     hChild = this->GetDlgItem(IDC_STATIC30);
@@ -376,38 +356,16 @@ void CPangolinDlg::InitControlPosition()
 }
 
 
-void CPangolinDlg::ShowVideoParamTab(int bShow)
-{
-    CWnd* hChild = NULL;
-    hChild = this->GetDlgItem(IDC_STATIC2);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_STATIC3);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_VIDEO_FPS);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_STATIC4);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_STATIC5);
-    hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
-    hChild->ShowWindow(bShow);
-}
-
-
-void CPangolinDlg::ShowAudioParamTab(int bShow)
+void CPangolinDlg::ShowCodecParamTab(int bShow)
 {
     CWnd* hChild = NULL;
     hChild = this->GetDlgItem(IDC_STATIC10);
     hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+    hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
     hChild->ShowWindow(bShow);
     hChild = this->GetDlgItem(IDC_STATIC11);
     hChild->ShowWindow(bShow);
-    hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
+    hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
     hChild->ShowWindow(bShow);
     hChild = this->GetDlgItem(IDC_STATIC12);
     hChild->ShowWindow(bShow);
@@ -430,7 +388,15 @@ void CPangolinDlg::ShowCaptureParamTab(int bShow)
     hChild = this->GetDlgItem(IDC_STATIC21);
     hChild->ShowWindow(bShow);
     hChild = this->GetDlgItem(IDC_AUDIO_CAP);
-    hChild->ShowWindow(bShow);
+	hChild->ShowWindow(bShow);
+	hChild = this->GetDlgItem(IDC_STATIC22);
+	hChild->ShowWindow(bShow);
+	hChild = this->GetDlgItem(IDC_VIDEO_FORMAT);
+	hChild->ShowWindow(bShow);
+	hChild = this->GetDlgItem(IDC_STATIC23);
+	hChild->ShowWindow(bShow);
+	hChild = this->GetDlgItem(IDC_AUDIO_FORMAT);
+	hChild->ShowWindow(bShow);
 }
 
 
@@ -457,36 +423,25 @@ void CPangolinDlg::OnTabChange(NMHDR *pNMHDR, LRESULT *pResult)
     {
     case 0:
     {
-        ShowVideoParamTab(SW_SHOW);
-        ShowAudioParamTab(SW_HIDE);
+        ShowCodecParamTab(SW_SHOW);
         ShowCaptureParamTab(SW_HIDE);
         ShowAboutTab(SW_HIDE);
     }
         break;
     case 1:
     {
-        ShowVideoParamTab(SW_HIDE);
-        ShowAudioParamTab(SW_SHOW);
-        ShowCaptureParamTab(SW_HIDE);
-        ShowAboutTab(SW_HIDE);
-    }
-    break;
-    case 2:
-    {
-        ShowVideoParamTab(SW_HIDE);
-        ShowAudioParamTab(SW_HIDE);
+		ShowCodecParamTab(SW_HIDE);
         ShowCaptureParamTab(SW_SHOW);
         ShowAboutTab(SW_HIDE);
     }
     break;
-    case 3:
-    {
-        ShowVideoParamTab(SW_HIDE);
-        ShowAudioParamTab(SW_HIDE);
-        ShowCaptureParamTab(SW_HIDE);
-        ShowAboutTab(SW_SHOW);
+    case 2:
+	{
+		ShowCodecParamTab(SW_HIDE);
+		ShowCaptureParamTab(SW_HIDE);
+		ShowAboutTab(SW_SHOW);
     }
-        break;
+    break;
     }
 
     *pResult = 0;
@@ -498,31 +453,25 @@ void CPangolinDlg::EnableAllControl(int bEnable)
     hChild = this->GetDlgItem(IDC_RTMPURL);
     hChild->EnableWindow(bEnable);
 
-    //视频参数
-    hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
-    hChild->EnableWindow(bEnable);
-    hChild = this->GetDlgItem(IDC_VIDEO_FPS);
-    hChild->EnableWindow(bEnable);
+    //编码参数
     hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
     hChild->EnableWindow(bEnable);
     hChild = this->GetDlgItem(IDC_VIDEO_BITRATE);
-    hChild->EnableWindow(bEnable);
-
-    //音频参数
-    hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
-    hChild->EnableWindow(bEnable);
-    hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
-    hChild->EnableWindow(bEnable);
-    hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
-    hChild->EnableWindow(bEnable);
-    hChild = this->GetDlgItem(IDC_AUDIO_BITRATE);
-    hChild->EnableWindow(bEnable);
+	hChild->EnableWindow(bEnable);
+	hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
+	hChild->EnableWindow(bEnable);
+	hChild = this->GetDlgItem(IDC_AUDIO_BITRATE);
+	hChild->EnableWindow(bEnable);
 
     //采集源
     hChild = this->GetDlgItem(IDC_VIDEO_CAP);
     hChild->EnableWindow(bEnable);
     hChild = this->GetDlgItem(IDC_AUDIO_CAP);
-    hChild->EnableWindow(bEnable);
+	hChild->EnableWindow(bEnable);
+	hChild = this->GetDlgItem(IDC_VIDEO_FORMAT);
+	hChild->EnableWindow(bEnable);
+	hChild = this->GetDlgItem(IDC_AUDIO_FORMAT);
+	hChild->EnableWindow(bEnable);
 }
 
 
@@ -533,16 +482,6 @@ void CPangolinDlg::GetVideoAttribute(VideoCodecAttribute *pattr)
         int sel = 0;
         CWnd* hChild = NULL;
         CString str;
-
-        hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
-        sel = ((CComboBox*)hChild)->GetCurSel();
-        DWORD data = ((CComboBox*)hChild)->GetItemData(sel);
-        pattr->height = LOWINT32(data);
-        pattr->width = HIGHINT32(data);
-
-        hChild = this->GetDlgItem(IDC_VIDEO_FPS);
-        hChild->GetWindowText(str);
-        pattr->fps = _ttoi(str);
 
         hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
         sel = ((CComboBox*)hChild)->GetCurSel();
@@ -562,20 +501,6 @@ void CPangolinDlg::GetAudioAttribute(AudioCodecAttribute *pattr)
         int sel = 0;
         CWnd* hChild = NULL;
         CString str;
-
-		hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
-		hChild->GetWindowText(str);
-		pattr->samplerate = _ttoi(str);
-
-		hChild = this->GetDlgItem(IDC_AUDIO_CHANNEL);
-		sel = ((CComboBox*)hChild)->GetCurSel();
-		if (sel==0)
-		{
-			pattr->channel = 1;
-		}
-		else {
-			pattr->channel = 2;
-		}
 
         hChild = this->GetDlgItem(IDC_AUDIO_CODEC);
         sel = ((CComboBox*)hChild)->GetCurSel();
@@ -643,39 +568,27 @@ void CPangolinDlg::OnVideoChange()
 
 	int sel = 0;
 	CWnd* hChild = NULL;
-	CString str;
 
-	VideoCaptureAttribute attr = {0};
-	videoCapture->GetConfig(&attr);
-
-	hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
+	hChild = this->GetDlgItem(IDC_VIDEO_FORMAT);
 	sel = ((CComboBox*)hChild)->GetCurSel();
-	DWORD data = ((CComboBox*)hChild)->GetItemData(sel);
-	attr.height = LOWINT32(data);
-	attr.width = HIGHINT32(data);
+	VideoCaptureAttribute* pattr = (VideoCaptureAttribute*)((CComboBox*)hChild)->GetItemData(sel);
 
-	hChild = this->GetDlgItem(IDC_VIDEO_FPS);
-	hChild->GetWindowText(str);
-	attr.fps = _ttoi(str);
-
-	videoCapture->SetConfig(&attr);
+	videoCapture->SetConfig(pattr);
 }
 
 
 void CPangolinDlg::OnAudioChange()
 {
 	// TODO: 在此添加控件通知处理程序代码
+
+	int sel = 0;
 	CWnd* hChild = NULL;
-	CString str;
 
-	AudioCaptureAttribute attr = { 0 };
-	audioCapture->GetConfig(&attr);
-
-	hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
-	hChild->GetWindowText(str);
-	attr.samplerate = _ttoi(str);
+	hChild = this->GetDlgItem(IDC_AUDIO_FORMAT);
+	sel = ((CComboBox*)hChild)->GetCurSel();
+	AudioCaptureAttribute* pattr = (AudioCaptureAttribute*)((CComboBox*)hChild)->GetItemData(sel);
 	
-	audioCapture->SetConfig(&attr);
+	audioCapture->SetConfig(pattr);
 }
 
 

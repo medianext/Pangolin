@@ -19,6 +19,7 @@ int Capture::Init()
     HRESULT hr = S_OK;
     IMFAttributes *pAttributes = NULL;
 
+	// Enumerate devices.
     hr = MFCreateAttributes(&pAttributes, 1);
     if (SUCCEEDED(hr))
     {
@@ -28,7 +29,6 @@ int Capture::Init()
             );
     }
 
-    // Enumerate devices.
     if (SUCCEEDED(hr))
     {
         hr = MFEnumDeviceSources(pAttributes, &m_ppVideoDevices, &m_videoCapCnt);
@@ -36,6 +36,7 @@ int Capture::Init()
 
     SafeRelease(&pAttributes);
 
+	// Enumerate devices.
     hr = MFCreateAttributes(&pAttributes, 1);
     if (SUCCEEDED(hr))
     {
@@ -45,7 +46,6 @@ int Capture::Init()
             );
     }
 
-    // Enumerate devices.
     if (SUCCEEDED(hr))
     {
         hr = MFEnumDeviceSources(pAttributes, &m_ppAudioDevices, &m_audioCapCnt);

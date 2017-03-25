@@ -28,8 +28,7 @@ private:
 
 private:
     void InitControlPosition();
-    void ShowVideoParamTab(int bShow);
-    void ShowAudioParamTab(int bShow);
+    void ShowCodecParamTab(int bShow);
     void ShowCaptureParamTab(int bShow);
     void ShowAboutTab(int bShow);
     void EnableAllControl(int bEnable);
