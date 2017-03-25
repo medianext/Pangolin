@@ -21,7 +21,7 @@ MediaFrame::MediaFrame(FrameType frameType, GUID  subtype, DWORD dataSize)
 }
 
 
-MediaFrame::MediaFrame(IMFMediaBuffer* pBuffer, FrameType type, int arg1, int arg2, int arg3) :
+MediaFrame::MediaFrame(IMFMediaBuffer* pBuffer, FrameType type, void* attribute) :
 	m_uTimestamp(0)
 {
     this->m_FrameType = type;
@@ -33,7 +33,8 @@ MediaFrame::MediaFrame(IMFMediaBuffer* pBuffer, FrameType type, int arg1, int ar
 
     if (this->m_FrameType == FRAME_TYPE_VIDEO)
     {
-        LONG lStride = (LONG)arg3;
+		VideoCaptureAttribute* pattr = (VideoCaptureAttribute*)attribute;
+        LONG lStride = (LONG)pattr->stride;
         // Helper object to lock the video buffer.
 
         // Lock the video buffer. This method returns a pointer to the first scan line
@@ -41,18 +42,21 @@ MediaFrame::MediaFrame(IMFMediaBuffer* pBuffer, FrameType type, int arg1, int ar
 		pBuffer->Lock(&pData, NULL, NULL);
 		memcpy(m_pData, pData, m_dataSize);
 		pBuffer->Unlock();
-		m_width = arg1;
-		m_height = arg2;
+		m_subtype = pattr->format;
+		m_width = pattr->width;
+		m_height = pattr->height;
 		if (lStride<0){
 			m_stride = 0 - lStride;
 		}else{
 			m_stride = lStride;
 		}
     }
-    else if (this->m_FrameType == FRAME_TYPE_AUDIO) {
-        m_samplerate = arg1;
-        m_channels = arg2;
-        m_bitwide = arg3;
+	else if (this->m_FrameType == FRAME_TYPE_AUDIO) {
+		AudioCaptureAttribute* pattr = (AudioCaptureAttribute*)attribute;
+		m_subtype = pattr->format;
+        m_samplerate = pattr->samplerate;
+        m_channels = pattr->channel;
+        m_bitwide = pattr->bitwide;
 		pBuffer->Lock(&pData, NULL, NULL);
 		memcpy(m_pData, pData, m_dataSize);
 		pBuffer->Unlock();

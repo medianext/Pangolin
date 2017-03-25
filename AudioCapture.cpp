@@ -220,8 +220,7 @@ HRESULT AudioCapture::OnReadSample(
             hr = pSample->GetBufferByIndex(0, &pBuffer);
             if (SUCCEEDED(hr))
             {
-                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, m_CurrentAttribute.samplerate, m_CurrentAttribute.channel, m_CurrentAttribute.bitwide);
-                frame.m_subtype = m_CurrentAttribute.format;
+                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, &m_CurrentAttribute);
 				frame.m_uTimestamp = llTimestamp / 10;
 
                 if (SUCCEEDED(hr)) {

@@ -239,8 +239,7 @@ HRESULT VideoCapture::OnReadSample(
 			hr = pSample->GetBufferByIndex(0, &pBuffer);
 			if (SUCCEEDED(hr))
             {
-                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, m_CurrentAttribute.width, m_CurrentAttribute.height, m_CurrentAttribute.stride);
-                frame.m_subtype = m_CurrentAttribute.format;
+                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, &m_CurrentAttribute);
 				frame.m_uTimestamp = llTimestamp / 10;
 
 				if (SUCCEEDED(hr)) {
