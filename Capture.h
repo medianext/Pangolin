@@ -18,6 +18,12 @@ struct AudioCaptureAttribute {
     int bitwide;
 };
 
+enum CAPTURE_STATUS_E
+{
+	CAPTURE_STATUS_STOP = 0,
+	CAPTURE_STATUS_START
+};
+
 class Capture
 {
 
@@ -34,9 +40,10 @@ public:
 
 public:
     virtual int AddSink(Sink * sink) = 0;
-    virtual int EnumAttribute(void* attribute) = 0;
+    virtual int GetSupportAttribute(void* attribute) = 0;
     virtual int SetConfig(void* attribute) = 0;
-    virtual int GetConfig(void* attribute) = 0;
+	virtual int GetConfig(void* attribute) = 0;
+	virtual CAPTURE_STATUS_E GetStatus() = 0;
     virtual int Start() = 0;
     virtual int Stop() = 0;
 };

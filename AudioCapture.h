@@ -41,20 +41,28 @@ private:
     CRITICAL_SECTION        m_critsec;
 
     IMFActivate				*m_pActivate;
-    IMFSourceReader         *m_pReader;
-    vector<AudioCaptureAttribute*> m_Attributes;
-    AudioCaptureAttribute    m_attribute;
-    vector<Sink *>           m_Sinks;
+	IMFSourceReader         *m_pReader;
+	vector<AudioCaptureAttribute*> m_AttributeList;
+	AudioCaptureAttribute    m_BestAttribute;
+	AudioCaptureAttribute    m_CurrentAttribute;
+	vector<Sink *>           m_Sinks;
+
+	CAPTURE_STATUS_E         m_Status = CAPTURE_STATUS_STOP;
 
 #if REC_CAPTURE_RAW
     ofstream                 m_file;
 #endif
 
+private:
+	void EnumAttribute();
+	void CreateSourceReader();
+
 public:
     int AddSink(Sink * sink);
-    int EnumAttribute(void* attribute);
+    int GetSupportAttribute(void* attribute);
     int SetConfig(void* attribute);
-    int GetConfig(void* attribute);
+	int GetConfig(void* attribute);
+	CAPTURE_STATUS_E GetStatus();
     int Start();
     int Stop();
 

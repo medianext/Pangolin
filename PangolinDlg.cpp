@@ -31,11 +31,15 @@ void CPangolinDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CPangolinDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-    ON_NOTIFY(TCN_SELCHANGE, IDC_SETTING, &CPangolinDlg::OnTabChange)
-    ON_BN_CLICKED(IDC_PUSH, &CPangolinDlg::OnBnClickedPush)
 	ON_WM_CLOSE()
 	ON_WM_DESTROY()
 	ON_WM_TIMER()
+	ON_NOTIFY(TCN_SELCHANGE, IDC_SETTING, &CPangolinDlg::OnTabChange)
+	ON_BN_CLICKED(IDC_PUSH, &CPangolinDlg::OnBnClickedPush)
+	ON_CBN_SELCHANGE(IDC_VIDEO_RESOLUTION, &CPangolinDlg::OnVideoChange)
+	ON_CBN_SELCHANGE(IDC_AUDIO_SAMPLERATE, &CPangolinDlg::OnAudioChange)
+	ON_CBN_SELCHANGE(IDC_VIDEO_CAP, &CPangolinDlg::OnVideoCaptureChange)
+	ON_CBN_SELCHANGE(IDC_AUDIO_CAP, &CPangolinDlg::OnAudioCaptureChange)
 END_MESSAGE_MAP()
 
 
@@ -72,14 +76,14 @@ BOOL CPangolinDlg::OnInitDialog()
 	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
     VideoCaptureAttribute videoAttribute = { 0 };
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_RESOLUTION);
-    vCnt = videoCapture->EnumAttribute((void*)&pVideoAttribute);
+    vCnt = videoCapture->GetSupportAttribute((void*)&pVideoAttribute);
     videoCapture->GetConfig(&videoAttribute);
     int cur_resolution = MAKEINT32(videoAttribute.width, videoAttribute.height);
     set<wstring> strset;
     for (int i = 0, j=0; i < vCnt; i++)
     {
         wchar_t str[20];
-        swprintf(str, L"%dx%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height);
+        swprintf(str, L"%dx%dp%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
         wstring s = str;
         if (strset.count(s)==0)
         {
@@ -107,7 +111,7 @@ BOOL CPangolinDlg::OnInitDialog()
     hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
     AudioCaptureAttribute audioAttribute = { 0 };
     vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
-    aCnt = audioCapture->EnumAttribute((void*)&pAudioAttribute);
+    aCnt = audioCapture->GetSupportAttribute((void*)&pAudioAttribute);
     audioCapture->GetConfig(&audioAttribute);
     int cur_samplerate = audioAttribute.samplerate;
     for (int i = 0; i < aCnt; i++)
@@ -268,6 +272,10 @@ void CPangolinDlg::OnTimer(UINT_PTR nIDEvent)
 		{
 			CodecStatistics statistics;
 			codec->GetCodecStatistics(&statistics);
+
+			CString str;
+			str.Format(TEXT("statistics: fps=%f, videoLost=%d, videoDec=%d\n"), statistics.videoDecFps, statistics.videoLostCnt, statistics.videoDecCnt);
+			OutputDebugString(str);
 
 		}
 	}
@@ -627,4 +635,59 @@ void CPangolinDlg::OnBnClickedPush()
         codec->Stop();
         rtmpc->Stop();
     }
+}
+
+void CPangolinDlg::OnVideoChange()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	int sel = 0;
+	CWnd* hChild = NULL;
+	CString str;
+
+	VideoCaptureAttribute attr = {0};
+	videoCapture->GetConfig(&attr);
+
+	hChild = this->GetDlgItem(IDC_VIDEO_RESOLUTION);
+	sel = ((CComboBox*)hChild)->GetCurSel();
+	DWORD data = ((CComboBox*)hChild)->GetItemData(sel);
+	attr.height = LOWINT32(data);
+	attr.width = HIGHINT32(data);
+
+	hChild = this->GetDlgItem(IDC_VIDEO_FPS);
+	hChild->GetWindowText(str);
+	attr.fps = _ttoi(str);
+
+	videoCapture->SetConfig(&attr);
+}
+
+
+void CPangolinDlg::OnAudioChange()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CWnd* hChild = NULL;
+	CString str;
+
+	AudioCaptureAttribute attr = { 0 };
+	audioCapture->GetConfig(&attr);
+
+	hChild = this->GetDlgItem(IDC_AUDIO_SAMPLERATE);
+	hChild->GetWindowText(str);
+	attr.samplerate = _ttoi(str);
+	
+	audioCapture->SetConfig(&attr);
+}
+
+
+void CPangolinDlg::OnVideoCaptureChange()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	videoCapture->Init();
+}
+
+
+void CPangolinDlg::OnAudioCaptureChange()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	audioCapture->Init();
 }

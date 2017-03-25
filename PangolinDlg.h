@@ -47,9 +47,13 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-    afx_msg void OnTabChange(NMHDR *pNMHDR, LRESULT *pResult);
-    afx_msg void OnBnClickedPush();
 	afx_msg void OnClose();
 	afx_msg void OnDestroy();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnTabChange(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnBnClickedPush();
+	afx_msg void OnVideoChange();
+	afx_msg void OnAudioChange();
+	afx_msg void OnVideoCaptureChange();
+	afx_msg void OnAudioCaptureChange();
 };

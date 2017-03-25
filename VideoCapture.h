@@ -42,15 +42,23 @@ private:
 
     IMFActivate				*m_pActivate;
     IMFSourceReader         *m_pReader;
-    vector<VideoCaptureAttribute*> m_Attributes;
-    VideoCaptureAttribute    m_attribute;
+    vector<VideoCaptureAttribute*> m_AttributeList;
+	VideoCaptureAttribute    m_BestAttribute;
+	VideoCaptureAttribute    m_CurrentAttribute;
     vector<Sink *>           m_Sinks;
+
+	CAPTURE_STATUS_E         m_Status = CAPTURE_STATUS_STOP;
+
+private:
+	void EnumAttribute();
+	void CreateSourceReader();
 
 public:
     int AddSink(Sink * sink);
-    int EnumAttribute(void* attribute);
+    int GetSupportAttribute(void* attribute);
     int SetConfig(void* attribute);
-    int GetConfig(void* attribute);
+	int GetConfig(void* attribute);
+	CAPTURE_STATUS_E GetStatus();
     int Start();
     int Stop();
 };
