@@ -14,7 +14,6 @@ struct AudioCaptureAttribute {
     GUID format;
     int channel;
     int samplerate;
-    int samplesize;
     int bitwide;
 };
 

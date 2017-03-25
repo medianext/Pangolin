@@ -962,6 +962,9 @@ int Codec::SetVideoCodecAttribute(VideoCodecAttribute* attribute)
     if (attribute != NULL)
     {
         m_videoAttribute = *attribute;
+		m_videoAttribute.width = m_videoSrcAttribute.width;
+		m_videoAttribute.height = m_videoSrcAttribute.height;
+		m_videoAttribute.fps = m_videoSrcAttribute.fps;
     }
 	return 0;
 }
@@ -981,7 +984,9 @@ int Codec::SetAudioCodecAttribute(AudioCodecAttribute* attribute)
 {
     if (attribute != NULL)
     {
-        m_audioAttribute = *attribute;
+		m_audioAttribute = *attribute;
+		m_audioAttribute.channel = m_audioSrcAttribute.channel;
+		m_audioAttribute.samplerate = m_audioSrcAttribute.samplerate;
         m_audioAttribute.bitwide = 16;
     }
 	return 0;
