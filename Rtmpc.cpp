@@ -436,6 +436,8 @@ int Rtmpc::SendVideoData(MediaPacket* packet)
 
     RTMPPacket_Free(&pkt);
 
+	m_statistics.videoTotalSnd += packet->m_dataSize;
+
     return 0;
 }
 
@@ -556,7 +558,9 @@ int Rtmpc::SendAudioData(MediaPacket* packet)
         return -1;
     }
 
-    RTMPPacket_Free(&pkt);
+	RTMPPacket_Free(&pkt);
+
+	m_statistics.audioTotalSnd += packet->m_dataSize;
 
     return 0;
 }
@@ -581,6 +585,12 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 	}
 
 	bool bFirst = true;
+	rtmpc->m_statistics = { 0 };
+
+	clock_t start = clock();
+	clock_t finish;
+	int preVideoSize = 0;
+	int preAudioSize = 0;
 
     while (1)
     {
@@ -671,6 +681,17 @@ DoAudio:
         }
         
         delete audioPacket;
+
+		//Statistics
+		finish = clock();
+		if (finish - start >= CLOCKS_PER_SEC)
+		{
+			rtmpc->m_statistics.videoBitrate = (rtmpc->m_statistics.videoTotalSnd - preVideoSize) * CLOCKS_PER_SEC / (finish - start);
+			preVideoSize = rtmpc->m_statistics.videoTotalSnd;
+			rtmpc->m_statistics.audioBitrate = (rtmpc->m_statistics.audioTotalSnd - preAudioSize) * CLOCKS_PER_SEC / (finish - start);
+			preAudioSize = rtmpc->m_statistics.audioTotalSnd;
+			start = finish;
+		}
     }
 
     rtmpc->Disconnect();
@@ -681,6 +702,16 @@ DoAudio:
 //////////////////////////////////////////////////////////////////////////
 // public method
 //////////////////////////////////////////////////////////////////////////
+
+int Rtmpc::GetRtmpStatistics(RtmpStatistics* statistics)
+{
+	if (statistics)
+	{
+		*statistics = m_statistics;
+	}
+	return 0;
+}
+
 
 int Rtmpc::SetConfig(char* url)
 {

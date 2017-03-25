@@ -641,12 +641,9 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 {
 	Codec* codec = (Codec*)lpParam;
 
-	SYSTEMTIME time = {0};
-	GetLocalTime(&time);
-
 	clock_t start = clock();
 	clock_t finish;
-	int count = 0;
+	int preVideoCnt = 0;
 
 	while (1)
 	{
@@ -694,14 +691,13 @@ DWORD WINAPI Codec::VideoEncodecThread(LPVOID lpParam)
 
 			//Statistics
 			codec->m_videoDecCnt++;
-			count++;
-			if (count > 10)
+			finish = clock();
+			if (finish - start >= CLOCKS_PER_SEC)
 			{
-				finish = clock();
-				double fps = (double)count * CLOCKS_PER_SEC / (finish - start);
+				double fps = ((double)(codec->m_videoDecCnt - preVideoCnt)) * CLOCKS_PER_SEC / (finish - start);
 				codec->m_videoDecFps = fps;
+				preVideoCnt = codec->m_videoDecCnt;
 				start = finish;
-				count = 0;
 			}
 
             codec->PushVideoPacket(packet);

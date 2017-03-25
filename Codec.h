@@ -44,6 +44,7 @@ struct AudioCodecAttribute
     int bitrate;
 };
 
+
 struct CodecStatistics {
 	uint32_t videoFrameCnt;
 	uint32_t videoPacketCnt;

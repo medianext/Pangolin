@@ -10,6 +10,15 @@
 #define RTMP_STATUS_PAUSE  2
 #define RTMP_STATUS_START  3
 
+
+struct RtmpStatistics {
+	uint32_t videoTotalSnd;
+	uint32_t videoBitrate;
+	uint32_t audioTotalSnd;
+	uint32_t audioBitrate;
+};
+
+
 struct H264Header {
 	unsigned char * sps;
 	int spslen;
@@ -25,6 +34,7 @@ public:
     ~Rtmpc();
 
 public:
+	int GetRtmpStatistics(RtmpStatistics* statistics);
     int SetConfig(char* url);
     int GetStatus();
     int Start();
@@ -57,6 +67,8 @@ private:
 	unsigned int m_uFirstTimestamp = 0;
 
     char m_Url[256];
+
+	RtmpStatistics m_statistics;
 
 #if REC_STREAM
     ofstream    h264file;

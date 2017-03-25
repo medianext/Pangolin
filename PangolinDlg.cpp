@@ -260,12 +260,17 @@ void CPangolinDlg::OnTimer(UINT_PTR nIDEvent)
 	{
 		if (codec)
 		{
-			CodecStatistics statistics;
-			codec->GetCodecStatistics(&statistics);
+			CodecStatistics code_statistics;
+			codec->GetCodecStatistics(&code_statistics);
+
+			RtmpStatistics rtmp_statistics;
+			rtmpc->GetRtmpStatistics(&rtmp_statistics);
 
 			CString str;
-			str.Format(TEXT("statistics: fps=%f, videoLost=%d, videoDec=%d\n"), statistics.videoDecFps, statistics.videoLostCnt, statistics.videoDecCnt);
-			OutputDebugString(str);
+			str.Format(TEXT("FPS:%.1f | Video:%.1fKB/s | Audio:%.1fKB/s\n"), code_statistics.videoDecFps, ((double)rtmp_statistics.videoBitrate)/1000, ((double)rtmp_statistics.audioBitrate)/1000);
+
+			CWnd* hChild = this->GetDlgItem(IDC_STATIC2);
+			hChild->SetWindowText(str);
 
 		}
 	}
@@ -306,7 +311,10 @@ void CPangolinDlg::InitControlPosition()
     hTab->SetWindowPos(NULL, 4, 370, 300, 180, 0);
 
     hChild = this->GetDlgItem(IDC_LOG);
-    hChild->SetWindowPos(NULL, 314, 370, 260, 180, 0);
+	hChild->SetWindowPos(NULL, 314, 370, 260, 160, 0);
+
+	hChild = this->GetDlgItem(IDC_STATIC2);
+	hChild->SetWindowPos(NULL, 314, 534, 260, 30, 0);
 
     //±àÂë²ÎÊý
     hChild = this->GetDlgItem(IDC_STATIC10);
