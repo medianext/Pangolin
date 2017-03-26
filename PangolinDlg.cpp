@@ -328,10 +328,10 @@ void CPangolinDlg::InitControlPosition()
 	hChild->SetWindowPos(NULL, 314, 370, 260, 180, 0);
 
 	hChild = this->GetDlgItem(IDC_STATIC_STATUS);
-	hChild->SetWindowPos(NULL, 300, 552, 260, 30, 0);
+	hChild->SetWindowPos(NULL, 260, 552, 300, 30, 0);
 
 	hChild = this->GetDlgItem(IDC_STATIC_COPYRIGHT);
-	hChild->SetWindowPos(NULL, 4, 552, 260, 30, 0);
+	hChild->SetWindowPos(NULL, 4, 552, 200, 30, 0);
 
     //±àÂë²ÎÊý
     hChild = this->GetDlgItem(IDC_STATIC10);
