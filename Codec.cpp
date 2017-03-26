@@ -306,15 +306,9 @@ Codec::Codec() :
 
 Codec::~Codec()
 {
-    if (m_videoEncoder)
-    {
-        x264_encoder_close(m_videoEncoder);
-    }
 
-    if (m_audioEncoder)
-    {
-        aacEncClose(&m_audioEncoder);
-	}
+	this->Stop();
+
 	DeleteCriticalSection(&m_vfMtx);
 	DeleteCriticalSection(&m_vpMtx);
 	DeleteCriticalSection(&m_afMtx);

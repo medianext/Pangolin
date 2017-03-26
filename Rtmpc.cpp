@@ -585,6 +585,10 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 	}
 
 	bool bFirst = true;
+
+	bool bHaveVideo = false;
+	bool bHaveAudio = false;
+
 	rtmpc->m_statistics = { 0 };
 
 	clock_t start = clock();
@@ -603,6 +607,7 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
 		MediaPacket* videoPacket = rtmpc->m_pCodec->GetVideoPacket();
 		if (videoPacket ==NULL)
 		{
+			bHaveVideo = false;
             if (bFirst)
             {
                 Sleep(10);
@@ -613,6 +618,8 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
                 goto DoAudio;
             }
 		}
+
+		bHaveVideo = true;
 
 		if (bFirst && videoPacket->m_bKeyframe)
 		{
@@ -663,8 +670,8 @@ DoAudio:
         MediaPacket* audioPacket = rtmpc->m_pCodec->GetAudioPacket();
         if (audioPacket == NULL)
         {
-            Sleep(10);
-            continue;
+			bHaveAudio = false;
+			goto DoStatistics;
         }
 
 #if REC_STREAM
@@ -673,6 +680,7 @@ DoAudio:
             rtmpc->aacfile.write((char *)audioPacket->m_pData, audioPacket->m_dataSize);
         }
 #endif
+		bHaveAudio = true;
 
         ret = rtmpc->SendAudioData(audioPacket);
         if (ret < 0)
@@ -682,6 +690,7 @@ DoAudio:
         
         delete audioPacket;
 
+DoStatistics:
 		//Statistics
 		finish = clock();
 		if (finish - start >= CLOCKS_PER_SEC)
@@ -691,6 +700,11 @@ DoAudio:
 			rtmpc->m_statistics.audioBitrate = (rtmpc->m_statistics.audioTotalSnd - preAudioSize) * CLOCKS_PER_SEC / (finish - start);
 			preAudioSize = rtmpc->m_statistics.audioTotalSnd;
 			start = finish;
+		}
+
+		if (!(bHaveVideo || bHaveAudio))
+		{
+			Sleep(10);
 		}
     }
 
