@@ -1,3 +1,9 @@
+/*
+* Author：王德明
+* Email：phight@163.com
+* QQ群：220954528
+*/
+
 #pragma once
 
 // 包括 SDKDDKVer.h 将定义可用的最高版本的 Windows 平台。

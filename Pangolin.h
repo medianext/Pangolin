@@ -1,3 +1,9 @@
+/*
+* Author：王德明
+* Email：phight@163.com
+* QQ群：220954528
+*/
+
 
 // Pangolin.h : PROJECT_NAME 应用程序的主头文件
 //

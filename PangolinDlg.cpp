@@ -1,3 +1,9 @@
+/*
+* Author：王德明
+* Email：phight@163.com
+* QQ群：220954528
+*/
+
 
 // PangolinDlg.cpp : 实现文件
 //
@@ -397,13 +403,13 @@ void CPangolinDlg::InitControlPosition()
 
     //关于
     hChild = this->GetDlgItem(IDC_STATIC30);
-    hChild->SetWindowPos(NULL, 18, 414, 50, 18, 0);
+    hChild->SetWindowPos(NULL, 30, 414, 50, 18, 0);
     hChild = this->GetDlgItem(IDC_LINK_PROJECT);
-    hChild->SetWindowPos(NULL, 80, 414, 210, 18, 0);
+    hChild->SetWindowPos(NULL, 90, 414, 54, 18, 0);
     hChild = this->GetDlgItem(IDC_STATIC31);
-    hChild->SetWindowPos(NULL, 10, 446, 60, 18, 0);
+    hChild->SetWindowPos(NULL, 30, 446, 60, 18, 0);
     hChild = this->GetDlgItem(IDC_LINK_QQ);
-    hChild->SetWindowPos(NULL, 80, 446, 60, 18, 0);
+    hChild->SetWindowPos(NULL, 90, 446, 60, 18, 0);
 }
 
 
