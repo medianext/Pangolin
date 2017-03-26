@@ -395,9 +395,16 @@ int Codec::ConfigVideoCodec()
 
 	m_videoEncoder = x264_encoder_open(&param);
 
-    x264_encoder_parameters(m_videoEncoder, &param);
+	if (m_videoEncoder)
+	{
+		x264_encoder_parameters(m_videoEncoder, &param);
+		return 0;
+	}
+	else
+	{
+		return -1;
+	}
 
-	return 0;
 }
 
 

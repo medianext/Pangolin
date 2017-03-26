@@ -64,6 +64,12 @@ BOOL CPangolinDlg::OnInitDialog()
     // 初始化采集器
 	Capture::Init();
     videoCapture = Capture::GetVideoCature(0);
+	if (videoCapture==NULL)
+	{
+		MessageBox(TEXT("未检测到摄像头"));
+		CButton* hBtn = (CButton*)this->GetDlgItem(IDC_PUSH);
+		hBtn->EnableWindow(FALSE);
+	}
     audioCapture = Capture::GetAudioCature(0);
 
 	//初始化控件数据
@@ -77,21 +83,27 @@ BOOL CPangolinDlg::OnInitDialog()
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CAP);
 	vCnt = Capture::EnumVideoCature(captureList);
-	for (it = captureList->begin(); it != captureList->end(); it++)
+	if (vCnt>0)
 	{
-		Capture * capture = *it;
-		hComBox->AddString(capture->GetName());
+		for (it = captureList->begin(); it != captureList->end(); it++)
+		{
+			Capture * capture = *it;
+			hComBox->AddString(capture->GetName());
+		}
+		hComBox->SetCurSel(0);
 	}
-	hComBox->SetCurSel(0);
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CAP);
 	aCnt = Capture::EnumAudioCature(captureList);
-	for (it = captureList->begin(); it != captureList->end(); it++)
+	if (aCnt>0)
 	{
-		Capture * capture = *it;
-		hComBox->AddString(capture->GetName());
+		for (it = captureList->begin(); it != captureList->end(); it++)
+		{
+			Capture * capture = *it;
+			hComBox->AddString(capture->GetName());
+		}
+		hComBox->SetCurSel(0);
 	}
-	hComBox->SetCurSel(0);
 
 	InitVideoAttribute();
 	InitAudioAttribute();
@@ -121,12 +133,18 @@ BOOL CPangolinDlg::OnInitDialog()
     codec = new Codec();
     rtmpc = new Rtmpc(codec);
 
-    videoCapture->AddSink(render);
-    videoCapture->AddSink(codec);
-    audioCapture->AddSink(codec);
+	if (videoCapture)
+	{
+		videoCapture->AddSink(render);
+		videoCapture->AddSink(codec);
+		videoCapture->Start();
+	}
 
-    videoCapture->Start();
-    audioCapture->Start();
+	if (audioCapture)
+	{
+		audioCapture->AddSink(codec);
+		audioCapture->Start();
+	}
 
 	return FALSE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -246,6 +264,10 @@ HCURSOR CPangolinDlg::OnQueryDragIcon()
 
 void CPangolinDlg::InitVideoAttribute()
 {
+	if (videoCapture==NULL)
+	{
+		return;
+	}
 
 	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
 	VideoCaptureAttribute videoAttribute = { 0 };
@@ -278,6 +300,10 @@ void CPangolinDlg::InitVideoAttribute()
 
 void CPangolinDlg::InitAudioAttribute()
 {
+	if (audioCapture == NULL)
+	{
+		return;
+	}
 
 	AudioCaptureAttribute audioAttribute = { 0 };
 	vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
