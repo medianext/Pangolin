@@ -378,7 +378,20 @@ int Codec::ConfigVideoCodec()
     param.rc.i_rc_method = X264_RC_ABR;
     param.rc.i_bitrate = m_videoAttribute.bitrate;
 
-    ret = x264_param_apply_profile(&param, "high");
+	switch (m_videoAttribute.profile)
+	{
+	case 0:
+		ret = x264_param_apply_profile(&param, "high");
+		break;
+	case 1:
+		ret = x264_param_apply_profile(&param, "main");
+		break;
+	case 2:
+		ret = x264_param_apply_profile(&param, "baseline");
+		break;
+	default:
+		ret = x264_param_apply_profile(&param, "high");
+	}
 
 	m_videoEncoder = x264_encoder_open(&param);
 
@@ -433,7 +446,7 @@ int Codec::ConfigAudioCodec()
 		return -1;
 	}
 
-	if (aacEncoder_SetParam(m_audioEncoder, AACENC_BITRATE, m_audioAttribute.bitrate) != AACENC_OK) {
+	if (aacEncoder_SetParam(m_audioEncoder, AACENC_BITRATE, m_audioAttribute.bitrate * 1000) != AACENC_OK) {
 		OutputDebugString(TEXT("Unable to set the bitrate\n"));
 		return -1;
     }

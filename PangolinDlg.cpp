@@ -146,7 +146,7 @@ BOOL CPangolinDlg::OnInitDialog()
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CODEC);
 	hComBox->SetCurSel(0);
 	hEdit = (CEdit*)this->GetDlgItem(IDC_AUDIO_BITRATE);
-	hEdit->SetWindowTextW(L"64000");
+	hEdit->SetWindowTextW(L"64");
 
     hEdit = (CEdit*)this->GetDlgItem(IDC_RTMPURL);
     hEdit->SetWindowTextW(L"rtmp://127.0.0.1/live/test");
@@ -274,9 +274,9 @@ void CPangolinDlg::OnTimer(UINT_PTR nIDEvent)
 			rtmpc->GetRtmpStatistics(&rtmp_statistics);
 
 			CString str;
-			str.Format(TEXT("FPS:%.1f | Video:%.1fKB/s | Audio:%.1fKB/s\n"), code_statistics.videoDecFps, ((double)rtmp_statistics.videoBitrate)/1000, ((double)rtmp_statistics.audioBitrate)/1000);
+			str.Format(TEXT("FPS: %.1f    Video: %.1fKB/s    Audio: %.1fKB/s\n"), code_statistics.videoDecFps, ((double)rtmp_statistics.videoBitrate)/1000, ((double)rtmp_statistics.audioBitrate)/1000);
 
-			CWnd* hChild = this->GetDlgItem(IDC_STATIC2);
+			CWnd* hChild = this->GetDlgItem(IDC_STATIC_STATUS);
 			hChild->SetWindowText(str);
 
 		}
@@ -298,7 +298,7 @@ void CPangolinDlg::InitControlPosition()
 {
     CRect rect;
     this->GetClientRect(&rect);
-    this->SetWindowPos(NULL, 0, 0, 600, 600, FALSE);
+    this->SetWindowPos(NULL, 0, 0, 600, 610, FALSE);
 
     CWnd* hChild = NULL;
 
@@ -318,10 +318,13 @@ void CPangolinDlg::InitControlPosition()
     hTab->SetWindowPos(NULL, 4, 370, 300, 180, 0);
 
     hChild = this->GetDlgItem(IDC_LOG);
-	hChild->SetWindowPos(NULL, 314, 370, 260, 160, 0);
+	hChild->SetWindowPos(NULL, 314, 370, 260, 180, 0);
 
-	hChild = this->GetDlgItem(IDC_STATIC2);
-	hChild->SetWindowPos(NULL, 314, 534, 260, 30, 0);
+	hChild = this->GetDlgItem(IDC_STATIC_STATUS);
+	hChild->SetWindowPos(NULL, 300, 552, 260, 30, 0);
+
+	hChild = this->GetDlgItem(IDC_STATIC_COPYRIGHT);
+	hChild->SetWindowPos(NULL, 4, 552, 260, 30, 0);
 
     //±àÂë²ÎÊý
     hChild = this->GetDlgItem(IDC_STATIC10);
@@ -571,6 +574,8 @@ void CPangolinDlg::OnBnClickedPush()
         this->EnableAllControl(TRUE);
 
 		KillTimer(CODEC_STATISTICS_TIMER);
+		hChild = this->GetDlgItem(IDC_STATIC_STATUS);
+		hChild->SetWindowText(TEXT("×´Ì¬£º"));
 
         codec->Stop();
         rtmpc->Stop();
