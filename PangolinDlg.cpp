@@ -207,6 +207,15 @@ void CPangolinDlg::OnClose()
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 
+	if (videoCapture)
+	{
+		videoCapture->Stop();
+	}
+	if (audioCapture)
+	{
+		audioCapture->Stop();
+	}
+
 	if (rtmpc)
 	{
 		rtmpc->Stop();
@@ -228,12 +237,10 @@ void CPangolinDlg::OnDestroy()
 
 	if (videoCapture)
 	{
-		videoCapture->Stop();
 		delete videoCapture;
 	}
 	if (audioCapture)
 	{
-		audioCapture->Stop();
 		delete audioCapture;
 	}
 	Capture::Uninit();
