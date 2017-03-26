@@ -4,16 +4,22 @@
 
 VideoCapture::VideoCapture(void * priv) :
     m_nRefCount(1),
-    m_pReader(NULL),
-    m_pActivate(NULL)
+    m_pReader(NULL)
 {
+	HRESULT hr = S_OK;
 
     InitializeCriticalSection(&m_critsec);
-    m_pActivate = (IMFActivate*)priv;
+	IMFActivate* pActivate = (IMFActivate*)priv;
 
-	this->EnumAttribute();
+	WCHAR * str;
+	hr = pActivate->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &str, NULL);
+	m_CaptureName = str;
+	CoTaskMemFree(str);
+	hr = pActivate->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &str, NULL);
+	m_CaptureLink = str;
+	CoTaskMemFree(str);
 
-	this->CreateSourceReader();
+	this->EnumAttribute(pActivate);
 }
 
 
@@ -21,6 +27,11 @@ VideoCapture::~VideoCapture()
 {
 	EnterCriticalSection(&m_critsec);
 	SafeRelease(&m_pReader);
+	if (m_pCurrentAttribute)
+	{
+		delete m_pCurrentAttribute;
+		m_pCurrentAttribute = NULL;
+	}
 	LeaveCriticalSection(&m_critsec);
 
 	VideoCaptureAttribute* pattr = NULL;
@@ -38,13 +49,13 @@ VideoCapture::~VideoCapture()
 
 /////////////// Private methods ///////////////
 
-void VideoCapture::EnumAttribute()
+void VideoCapture::EnumAttribute(IMFActivate* pActivate)
 {
 	HRESULT hr = S_OK;
 
 	IMFMediaSource  *pSource = nullptr;
 
-	hr = m_pActivate->ActivateObject(
+	hr = pActivate->ActivateObject(
 		__uuidof(IMFMediaSource),
 		(void**)&pSource
 		);
@@ -101,12 +112,7 @@ void VideoCapture::EnumAttribute()
 						if (factor > maxFactor)
 						{
 							maxFactor = factor;
-							pMediaTypeHandler->SetCurrentMediaType(pMediaType);
-							m_BestAttribute.format = subType;
-							m_BestAttribute.stride = lStride;
-							m_BestAttribute.width = uWidth;
-							m_BestAttribute.height = uHeight;
-							m_BestAttribute.fps = uNummerator;
+							m_pBestAttribute = attribute;
 						}
 					}
 					SafeRelease(&pMediaType);
@@ -128,14 +134,22 @@ void VideoCapture::CreateSourceReader()
 	HRESULT hr = S_OK;
 
 	IMFMediaSource  *pSource = NULL;
+	IMFAttributes   *pAttributes = NULL;
 
-	hr = m_pActivate->ActivateObject(
-		__uuidof(IMFMediaSource),
-		(void**)&pSource
-		);
+	SafeRelease(&m_pReader);
+	if (m_pCurrentAttribute)
+	{
+		delete m_pCurrentAttribute;
+		m_pCurrentAttribute = NULL;
+	}
+
+	hr = MFCreateAttributes(&pAttributes, 2);
+	pAttributes->SetString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, m_CaptureLink);
+	pAttributes->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+	hr = MFCreateDeviceSource(pAttributes, &pSource);
+	SafeRelease(&pAttributes);
 
 	// Create the IMFSourceReader
-	IMFAttributes   *pAttributes = NULL;
 	hr = MFCreateAttributes(&pAttributes, 2);
 	if (SUCCEEDED(hr))
 	{
@@ -146,33 +160,81 @@ void VideoCapture::CreateSourceReader()
 		if (!SUCCEEDED(hr))
 		{
 		}
-		IMFMediaType * pMediaType = NULL;
-		hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pMediaType);
-		if (SUCCEEDED(hr))
-		{
-			UINT32 uWidth, uHeight, uNummerator, uDenominator;
-			LONG lStride;
-			GUID subType;
-			pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
-			MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
-			MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
-			hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
-			if (FAILED(hr))
-			{
-				hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
-			}
-			m_CurrentAttribute.format = subType;
-			m_CurrentAttribute.stride = lStride;
-			m_CurrentAttribute.width = uWidth;
-			m_CurrentAttribute.height = uHeight;
-			m_CurrentAttribute.fps = uNummerator;
-			SafeRelease(&pMediaType);
-		}
+
+		SetConfigInternal(m_pBestAttribute);
+
 		SafeRelease(&pAttributes);
 	}
 
 	SafeRelease(&pSource);
 
+}
+
+
+HRESULT VideoCapture::SetConfigInternal(VideoCaptureAttribute* pattr)
+{
+	HRESULT hr;
+
+	bool success = false;
+
+	for (int i = 0; ; i++)
+	{
+		IMFMediaType   *pMediaType = nullptr;
+		hr = m_pReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, i, &pMediaType);
+		if (!SUCCEEDED(hr))
+		{
+			break;
+		}
+
+		UINT32 uWidth, uHeight, uNummerator, uDenominator;
+		LONG lStride;
+		GUID subType;
+		pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+		MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
+		MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+		hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+		if (FAILED(hr))
+		{
+			hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
+		}
+
+		if (uWidth == pattr->width && uHeight == pattr->height && uNummerator == pattr->fps && subType == pattr->format)
+		{
+			hr = m_pReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, pMediaType);
+			if (SUCCEEDED(hr))
+			{
+				if (m_pCurrentAttribute==NULL)
+				{
+					m_pCurrentAttribute = new VideoCaptureAttribute;
+				}
+				*m_pCurrentAttribute = *pattr;
+				m_pCurrentAttribute->stride = lStride;
+
+				vector<Sink*>::iterator it;
+				for (it = m_Sinks.begin(); it != m_Sinks.end(); it++)
+				{
+					Sink* sink = *it;
+					sink->SetSourceAttribute(m_pCurrentAttribute, ATTRIBUTE_TYPE_VIDEO);
+				}
+
+				success = true;
+			}
+			else
+			{
+				OutputDebugString(TEXT("IMFSourceReader::SetCurrentMediaType failed\n"));
+			}
+		}
+
+		SafeRelease(&pMediaType);
+
+		if (success)
+		{
+			break;
+		}
+
+	}
+
+	return hr;
 }
 
 
@@ -239,7 +301,7 @@ HRESULT VideoCapture::OnReadSample(
 			hr = pSample->GetBufferByIndex(0, &pBuffer);
 			if (SUCCEEDED(hr))
             {
-                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, &m_CurrentAttribute);
+                MediaFrame frame(pBuffer, FRAME_TYPE_VIDEO, m_pCurrentAttribute);
 				frame.m_uTimestamp = llTimestamp / 10;
 
 				if (SUCCEEDED(hr)) {
@@ -275,8 +337,16 @@ HRESULT VideoCapture::OnReadSample(
 
 int VideoCapture::AddSink(Sink * sink)
 {
-    if ( (sink != NULL) && (sink->SetSourceAttribute(&m_CurrentAttribute, ATTRIBUTE_TYPE_VIDEO)>=0) )
+    if ( sink != NULL )
     {
+		if (m_pCurrentAttribute)
+		{
+			sink->SetSourceAttribute(m_pCurrentAttribute, ATTRIBUTE_TYPE_VIDEO);
+		}
+		else
+		{
+			sink->SetSourceAttribute(m_pBestAttribute, ATTRIBUTE_TYPE_VIDEO);
+		}
         m_Sinks.push_back(sink);
     }
     return 0;
@@ -308,60 +378,7 @@ int VideoCapture::SetConfig(void* attribute)
 		hr = m_pReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
 	}
 
-	bool success = false;
-
-	for (int i = 0; ; i++)
-	{
-		IMFMediaType   *pMediaType= nullptr;
-		hr = m_pReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, i, &pMediaType);
-		if (!SUCCEEDED(hr))
-		{
-			break;
-		}
-
-		UINT32 uWidth, uHeight, uNummerator, uDenominator;
-		LONG lStride;
-		GUID subType;
-		pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
-		MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
-		MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
-		hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
-		if (FAILED(hr))
-		{
-			hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
-		}
-		
-		if (uWidth==pattr->width && uHeight==pattr->height && uNummerator==pattr->fps && subType==pattr->format)
-		{
-			hr = m_pReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, pMediaType);
-			if (SUCCEEDED(hr))
-			{
-				m_CurrentAttribute = *pattr;
-				m_CurrentAttribute.stride = lStride;
-
-				vector<Sink*>::iterator it;
-				for (it = m_Sinks.begin(); it != m_Sinks.end(); it++)
-				{
-					Sink* sink = *it;
-					sink->SetSourceAttribute(&m_CurrentAttribute, ATTRIBUTE_TYPE_VIDEO);
-				}
-
-				success = true;
-			}
-			else
-			{
-				OutputDebugString(TEXT("IMFSourceReader::SetCurrentMediaType failed\n"));
-			}
-		}
-
-		SafeRelease(&pMediaType);
-
-		if (success)
-		{
-			break;
-		}
-
-	}
+	SetConfigInternal(pattr);
 
 	if (status == CAPTURE_STATUS_START)
 	{
@@ -378,9 +395,22 @@ int VideoCapture::GetConfig(void* attribute)
 {
     if (attribute)
     {
-        *(VideoCaptureAttribute*)attribute = m_CurrentAttribute;
+		if (m_pCurrentAttribute)
+		{
+			*(VideoCaptureAttribute*)attribute = *m_pCurrentAttribute;
+		}
+		else
+		{
+			*(VideoCaptureAttribute*)attribute = *m_pBestAttribute;
+		}
     }
     return 0;
+}
+
+
+CString VideoCapture::GetName()
+{
+	return m_CaptureName;
 }
 
 
@@ -393,6 +423,8 @@ CAPTURE_STATUS_E VideoCapture::GetStatus()
 int VideoCapture::Start()
 {
 	EnterCriticalSection(&m_critsec);
+
+	this->CreateSourceReader();
 
 	m_pReader->ReadSample((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, NULL, NULL, NULL, NULL);
 

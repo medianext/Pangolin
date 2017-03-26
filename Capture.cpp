@@ -5,8 +5,8 @@
 
 static UINT32 m_videoCapCnt;
 static UINT32 m_audioCapCnt;
-static IMFActivate **m_ppVideoDevices;
-static IMFActivate **m_ppAudioDevices;
+static vector<Capture *> videoCaptureList;
+static vector<Capture *> audioCaptureList;
 
 
 Capture::~Capture()
@@ -17,7 +17,8 @@ Capture::~Capture()
 int Capture::Init()
 {
     HRESULT hr = S_OK;
-    IMFAttributes *pAttributes = NULL;
+	IMFAttributes *pAttributes = NULL;
+	static IMFActivate **m_ppDevices;
 
 	// Enumerate devices.
     hr = MFCreateAttributes(&pAttributes, 1);
@@ -31,7 +32,12 @@ int Capture::Init()
 
     if (SUCCEEDED(hr))
     {
-        hr = MFEnumDeviceSources(pAttributes, &m_ppVideoDevices, &m_videoCapCnt);
+		hr = MFEnumDeviceSources(pAttributes, &m_ppDevices, &m_videoCapCnt);
+		for (UINT32 i = 0; i < m_videoCapCnt; i++)
+		{
+			videoCaptureList.push_back(new VideoCapture(m_ppDevices[i]));
+			SafeRelease(&m_ppDevices[i]);
+		}
     }
 
     SafeRelease(&pAttributes);
@@ -48,7 +54,12 @@ int Capture::Init()
 
     if (SUCCEEDED(hr))
     {
-        hr = MFEnumDeviceSources(pAttributes, &m_ppAudioDevices, &m_audioCapCnt);
+		hr = MFEnumDeviceSources(pAttributes, &m_ppDevices, &m_audioCapCnt);
+		for (UINT32 i = 0; i < m_audioCapCnt; i++)
+		{
+			audioCaptureList.push_back(new AudioCapture(m_ppDevices[i]));
+			SafeRelease(&m_ppDevices[i]);
+		}
     }
 
     SafeRelease(&pAttributes);
@@ -62,55 +73,46 @@ int Capture::Uninit()
     HRESULT hr = S_OK;
     IMFAttributes *pAttributes = NULL;
 
-	for (UINT32 i = 0; i < m_videoCapCnt; i++)
+	Capture* capture = NULL;
+	vector<Capture*>::iterator it;
+
+	for (it = videoCaptureList.begin(); it != videoCaptureList.end();)
 	{
-		SafeRelease(&m_ppVideoDevices[i]);
+		capture = *it;
+		it = videoCaptureList.erase(it);
+		delete capture;
 	}
 
-	for (UINT32 i = 0; i < m_audioCapCnt; i++)
+	for (it = audioCaptureList.begin(); it != audioCaptureList.end();)
 	{
-		SafeRelease(&m_ppAudioDevices[i]);
+		capture = *it;
+		it = audioCaptureList.erase(it);
+		delete capture;
 	}
 
     return m_audioCapCnt;
 }
 
 
-int Capture::EnumVideoCature(std::vector<CString *> *vCaptureList)
+int Capture::EnumVideoCature(const std::vector<Capture *> *& captureList)
 {
-    if (vCaptureList != NULL)
+    if (captureList != NULL)
     {
-        for (UINT32 i = 0; i < m_videoCapCnt; i++)
-        {
-            WCHAR * szFriendlyName;
-            m_ppVideoDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, NULL);
-			CString* str = new CString;
-			str->Format(TEXT("%s"), szFriendlyName);
-            vCaptureList->insert(vCaptureList->end(), str);
-            CoTaskMemFree(szFriendlyName);
-        }
+		captureList = &videoCaptureList;
     }
 
 	return (int)m_videoCapCnt;
 }
 
 
-int Capture::EnumAudioCature(std::vector<CString *> *aCaptureList)
+int Capture::EnumAudioCature(const std::vector<Capture *> *& captureList)
 {
-    if (aCaptureList != NULL)
-    {
-        for (UINT32 i = 0; i < m_audioCapCnt; i++)
-        {
-            WCHAR * szFriendlyName;
-			m_ppAudioDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, NULL);
-			CString* str = new CString;
-			str->Format(TEXT("%s"), szFriendlyName);
-            aCaptureList->insert(aCaptureList->end(), str);
-            CoTaskMemFree(szFriendlyName);
-        }
-    }
+	if (captureList != NULL)
+	{
+		captureList = &audioCaptureList;
+	}
 
-	return m_audioCapCnt;
+	return (int)m_audioCapCnt;
 }
 
 
@@ -118,7 +120,7 @@ Capture* Capture::GetVideoCature(int index)
 {
     if ((UINT32)index < m_videoCapCnt)
     {
-        return new VideoCapture(m_ppVideoDevices[0]);
+        return videoCaptureList[index];
     }
     return NULL;
 }
@@ -127,8 +129,8 @@ Capture* Capture::GetVideoCature(int index)
 Capture* Capture::GetAudioCature(int index)
 {
     if ((UINT32)index < m_audioCapCnt)
-    {
-        return new AudioCapture(m_ppAudioDevices[0]);
+	{
+		return audioCaptureList[index];
     }
     return NULL;
 }

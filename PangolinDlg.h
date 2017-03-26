@@ -27,6 +27,8 @@ private:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV Ö§³Ö
 
 private:
+	void InitVideoAttribute();
+	void InitAudioAttribute();
     void InitControlPosition();
     void ShowCodecParamTab(int bShow);
     void ShowCaptureParamTab(int bShow);

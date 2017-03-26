@@ -72,71 +72,29 @@ BOOL CPangolinDlg::OnInitDialog()
     CString str;
 	int vCnt, aCnt;
 
-	vector<CString *> strList;
-	vector<CString *>::iterator it;
+	const vector<Capture *> *captureList;
+	vector<Capture *>::const_iterator it;
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CAP);
-	vCnt = Capture::EnumVideoCature(&strList);
-	for (it = strList.begin(); it != strList.end();)
+	vCnt = Capture::EnumVideoCature(captureList);
+	for (it = captureList->begin(); it != captureList->end(); it++)
 	{
-		CString * str = *it;
-		hComBox->AddString(*str);
-		it = strList.erase(it);
-		delete str;
+		Capture * capture = *it;
+		hComBox->AddString(capture->GetName());
 	}
 	hComBox->SetCurSel(0);
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_CAP);
-	aCnt = Capture::EnumAudioCature(&strList);
-	for (it = strList.begin(); it != strList.end();)
+	aCnt = Capture::EnumAudioCature(captureList);
+	for (it = captureList->begin(); it != captureList->end(); it++)
 	{
-		CString * str = *it;
-		hComBox->AddString(*str);
-		it = strList.erase(it);
-		delete str;
+		Capture * capture = *it;
+		hComBox->AddString(capture->GetName());
 	}
 	hComBox->SetCurSel(0);
 
-	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
-    VideoCaptureAttribute videoAttribute = { 0 };
-	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_FORMAT);
-    vCnt = videoCapture->GetSupportAttribute((void*)&pVideoAttribute);
-    videoCapture->GetConfig(&videoAttribute);
-    set<wstring> strset;
-    for (int i = 0, j=0; i < vCnt; i++)
-    {
-        wchar_t str[20];
-        swprintf(str, L"%dx%dp%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
-        wstring s = str;
-        if (strset.count(s)==0)
-        {
-            strset.insert(s);
-            hComBox->AddString(str);
-            hComBox->SetItemData(j, (DWORD_PTR)(*pVideoAttribute)[i]);
-            if ((*pVideoAttribute)[i]->width == videoAttribute.width && (*pVideoAttribute)[i]->height== videoAttribute.height && (*pVideoAttribute)[i]->fps == videoAttribute.fps)
-            {
-                hComBox->SetCurSel(j);
-            }
-            j++;
-        }
-	}
-
-	hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_FORMAT);
-	AudioCaptureAttribute audioAttribute = { 0 };
-	vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
-	aCnt = audioCapture->GetSupportAttribute((void*)&pAudioAttribute);
-	audioCapture->GetConfig(&audioAttribute);
-	for (int i = 0; i < aCnt; i++)
-	{
-		wchar_t str[20];
-		swprintf(str, TEXT("%s,%d,%d位"), (*pAudioAttribute)[i]->channel==2? TEXT("立体声"): TEXT("单声道"),(*pAudioAttribute)[i]->samplerate, (*pAudioAttribute)[i]->bitwide);
-		hComBox->AddString(str);
-		hComBox->SetItemData(i, (DWORD_PTR)(*pAudioAttribute)[i]);
-		if (audioAttribute.samplerate == (*pAudioAttribute)[i]->samplerate && audioAttribute.channel == (*pAudioAttribute)[i]->channel && audioAttribute.bitwide == (*pAudioAttribute)[i]->bitwide)
-		{
-			hComBox->SetCurSel(i);
-		}
-	}
+	InitVideoAttribute();
+	InitAudioAttribute();
 
 	hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_CODEC);
 	hComBox->SetCurSel(0);
@@ -235,14 +193,6 @@ void CPangolinDlg::OnDestroy()
 
 	// TODO: 在此处添加消息处理程序代码
 
-	if (videoCapture)
-	{
-		delete videoCapture;
-	}
-	if (audioCapture)
-	{
-		delete audioCapture;
-	}
 	Capture::Uninit();
 
 	if (rtmpc)
@@ -291,6 +241,63 @@ void CPangolinDlg::OnTimer(UINT_PTR nIDEvent)
 HCURSOR CPangolinDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
+}
+
+
+void CPangolinDlg::InitVideoAttribute()
+{
+
+	vector<VideoCaptureAttribute*> *pVideoAttribute = NULL;
+	VideoCaptureAttribute videoAttribute = { 0 };
+
+	CComboBox* hComBox = (CComboBox*)this->GetDlgItem(IDC_VIDEO_FORMAT);
+	hComBox->ResetContent();
+
+	int vCnt = videoCapture->GetSupportAttribute((void*)&pVideoAttribute);
+	videoCapture->GetConfig(&videoAttribute);
+	set<wstring> strset;
+	for (int i = 0, j = 0; i < vCnt; i++)
+	{
+		wchar_t str[20];
+		swprintf(str, L"%dx%dp%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
+		wstring s = str;
+		if (strset.count(s) == 0)
+		{
+			strset.insert(s);
+			hComBox->AddString(str);
+			hComBox->SetItemData(j, (DWORD_PTR)(*pVideoAttribute)[i]);
+			if ((*pVideoAttribute)[i]->width == videoAttribute.width && (*pVideoAttribute)[i]->height == videoAttribute.height && (*pVideoAttribute)[i]->fps == videoAttribute.fps)
+			{
+				hComBox->SetCurSel(j);
+			}
+			j++;
+		}
+	}
+}
+
+
+void CPangolinDlg::InitAudioAttribute()
+{
+
+	AudioCaptureAttribute audioAttribute = { 0 };
+	vector<AudioCaptureAttribute*> *pAudioAttribute = NULL;
+
+	CComboBox* hComBox = (CComboBox*)this->GetDlgItem(IDC_AUDIO_FORMAT);
+	hComBox->ResetContent();
+
+	int aCnt = audioCapture->GetSupportAttribute((void*)&pAudioAttribute);
+	audioCapture->GetConfig(&audioAttribute);
+	for (int i = 0; i < aCnt; i++)
+	{
+		wchar_t str[20];
+		swprintf(str, TEXT("%s,%d,%d位"), (*pAudioAttribute)[i]->channel == 2 ? TEXT("立体声") : TEXT("单声道"), (*pAudioAttribute)[i]->samplerate, (*pAudioAttribute)[i]->bitwide);
+		hComBox->AddString(str);
+		hComBox->SetItemData(i, (DWORD_PTR)(*pAudioAttribute)[i]);
+		if (audioAttribute.samplerate == (*pAudioAttribute)[i]->samplerate && audioAttribute.channel == (*pAudioAttribute)[i]->channel && audioAttribute.bitwide == (*pAudioAttribute)[i]->bitwide)
+		{
+			hComBox->SetCurSel(i);
+		}
+	}
 }
 
 
@@ -615,12 +622,47 @@ void CPangolinDlg::OnAudioChange()
 void CPangolinDlg::OnVideoCaptureChange()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	videoCapture->Init();
+
+	int sel = 0;
+	CWnd* hChild = NULL;
+
+	hChild = this->GetDlgItem(IDC_VIDEO_CAP);
+	sel = ((CComboBox*)hChild)->GetCurSel();
+
+	if (videoCapture)
+	{
+		videoCapture->Stop();
+	}
+	videoCapture = Capture::GetVideoCature(sel);
+	if (videoCapture)
+	{
+		InitVideoAttribute();
+		videoCapture->AddSink(codec);
+		videoCapture->AddSink(render);
+		videoCapture->Start();
+	}
 }
 
 
 void CPangolinDlg::OnAudioCaptureChange()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	audioCapture->Init();
+
+	int sel = 0;
+	CWnd* hChild = NULL;
+
+	hChild = this->GetDlgItem(IDC_AUDIO_CAP);
+	sel = ((CComboBox*)hChild)->GetCurSel();
+
+	if (audioCapture)
+	{
+		audioCapture->Stop();
+	}
+	audioCapture = Capture::GetAudioCature(sel);
+	if (audioCapture)
+	{
+		InitAudioAttribute();
+		audioCapture->AddSink(codec);
+		audioCapture->Start();
+	}
 }

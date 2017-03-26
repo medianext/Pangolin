@@ -4,16 +4,22 @@
 
 AudioCapture::AudioCapture(void * priv) :
     m_nRefCount(1),
-    m_pReader(NULL),
-    m_pActivate(NULL)
+    m_pReader(NULL)
 {
+	HRESULT hr = S_OK;
 
-    InitializeCriticalSection(&m_critsec);
-	m_pActivate = (IMFActivate*)priv;
+	InitializeCriticalSection(&m_critsec);
+	IMFActivate* pActivate = (IMFActivate*)priv;
 
-	this->EnumAttribute();
+	WCHAR * str;
+	hr = pActivate->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &str, NULL);
+	m_CaptureName = str;
+	CoTaskMemFree(str);
+	hr = pActivate->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_ENDPOINT_ID, &str, NULL);
+	m_CapturePoint = str;
+	CoTaskMemFree(str);
 
-	this->CreateSourceReader();
+	this->EnumAttribute(pActivate);
 }
 
 
@@ -21,6 +27,11 @@ AudioCapture::~AudioCapture()
 {
 	EnterCriticalSection(&m_critsec);
 	SafeRelease(&m_pReader);
+	if (m_pCurrentAttribute)
+	{
+		delete m_pCurrentAttribute;
+		m_pCurrentAttribute = NULL;
+	}
 	LeaveCriticalSection(&m_critsec);
 
 	vector<AudioCaptureAttribute*>::iterator it;
@@ -37,14 +48,14 @@ AudioCapture::~AudioCapture()
 
 /////////////// Private methods ///////////////
 
-void AudioCapture::EnumAttribute()
+void AudioCapture::EnumAttribute(IMFActivate* pActivate)
 {
 
 	HRESULT hr = S_OK;
 
 	IMFMediaSource  *pSource = NULL;
 
-	hr = m_pActivate->ActivateObject(
+	hr = pActivate->ActivateObject(
 		__uuidof(IMFMediaSource),
 		(void**)&pSource
 		);
@@ -77,13 +88,12 @@ void AudioCapture::EnumAttribute()
 					hr = pMediaTypeHandler->GetMediaTypeByIndex(j, &pMediaType);
 					if (SUCCEEDED(hr))
 					{
-						UINT32 uChannel, nSamplesRate, wBitsPerSample, wSamplesPerBlock;
+						UINT32 uChannel, nSamplesRate, wBitsPerSample;
 						GUID subType;
 						hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
 						hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
 						hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
 						hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
-						hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_BLOCK, &wSamplesPerBlock);
 
 						AudioCaptureAttribute *attribute = new AudioCaptureAttribute();
 						attribute->format = subType;
@@ -92,10 +102,7 @@ void AudioCapture::EnumAttribute()
 						attribute->bitwide = wBitsPerSample;
 						m_AttributeList.push_back(attribute);
 
-						m_BestAttribute.format = subType;
-						m_BestAttribute.channel = uChannel;
-						m_BestAttribute.samplerate = nSamplesRate;
-						m_BestAttribute.bitwide = wBitsPerSample;
+						m_pBestAttribute = attribute;
 					}
 					SafeRelease(&pMediaType);
 				}
@@ -115,14 +122,22 @@ void AudioCapture::CreateSourceReader()
 	HRESULT hr = S_OK;
 
 	IMFMediaSource  *pSource = NULL;
+	IMFAttributes   *pAttributes = NULL;
 
-	hr = m_pActivate->ActivateObject(
-		__uuidof(IMFMediaSource),
-		(void**)&pSource
-		);
+	SafeRelease(&m_pReader);
+	if (m_pCurrentAttribute)
+	{
+		delete m_pCurrentAttribute;
+		m_pCurrentAttribute = NULL;
+	}
+
+	hr = MFCreateAttributes(&pAttributes, 2);
+	pAttributes->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID);
+	pAttributes->SetString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_ENDPOINT_ID, m_CapturePoint);
+	hr = MFCreateDeviceSource(pAttributes, &pSource);
+	SafeRelease(&pAttributes);
 
 	// Create the IMFSourceReader
-	IMFAttributes   *pAttributes = NULL;
 	hr = MFCreateAttributes(&pAttributes, 2);
 	if (SUCCEEDED(hr))
 	{
@@ -133,28 +148,75 @@ void AudioCapture::CreateSourceReader()
 		if (!SUCCEEDED(hr))
 		{
 		}
-		IMFMediaType * pMediaType = NULL;
-		hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &pMediaType);
-		if (SUCCEEDED(hr))
-		{
 
-			UINT32 uChannel, nSamplesRate, wBitsPerSample;
-			GUID subType;
-			hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
-			hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
-			hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
-			hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
-			m_CurrentAttribute.format = subType;
-			m_CurrentAttribute.channel = uChannel;
-			m_CurrentAttribute.samplerate = nSamplesRate;
-			m_CurrentAttribute.bitwide = wBitsPerSample;
-			SafeRelease(&pMediaType);
-		}
+		SetConfigInternal(m_pBestAttribute);
+
 		SafeRelease(&pAttributes);
 	}
 
 	SafeRelease(&pSource);
 
+}
+
+
+HRESULT AudioCapture::SetConfigInternal(AudioCaptureAttribute* pattr)
+{
+	HRESULT hr;
+
+	bool success = false;
+
+	for (int i = 0; ; i++)
+	{
+		IMFMediaType   *pMediaType = nullptr;
+		hr = m_pReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, i, &pMediaType);
+		if (!SUCCEEDED(hr))
+		{
+			break;
+		}
+
+		UINT32 uChannel, nSamplesRate, wBitsPerSample;
+		GUID subType;
+		hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+		hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
+		hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
+		hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
+
+		if (uChannel == pattr->channel && nSamplesRate == pattr->samplerate && wBitsPerSample == pattr->bitwide && subType == pattr->format)
+		{
+			hr = m_pReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, NULL, pMediaType);
+			if (SUCCEEDED(hr))
+			{
+				if (m_pCurrentAttribute == NULL)
+				{
+					m_pCurrentAttribute = new AudioCaptureAttribute;
+				}
+				*m_pCurrentAttribute = *pattr;
+
+				vector<Sink*>::iterator it;
+				for (it = m_Sinks.begin(); it != m_Sinks.end(); it++)
+				{
+					Sink* sink = *it;
+					sink->SetSourceAttribute(m_pCurrentAttribute, ATTRIBUTE_TYPE_AUDIO);
+				}
+
+				success = true;
+			}
+			else
+			{
+				OutputDebugString(TEXT("IMFSourceReader::SetCurrentMediaType failed\n"));
+			}
+		}
+
+		SafeRelease(&pMediaType);
+
+		if (success)
+		{
+			break;
+		}
+
+	}
+
+	return hr;
 }
 
 
@@ -220,7 +282,7 @@ HRESULT AudioCapture::OnReadSample(
             hr = pSample->GetBufferByIndex(0, &pBuffer);
             if (SUCCEEDED(hr))
             {
-                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, &m_CurrentAttribute);
+                MediaFrame frame(pBuffer, FRAME_TYPE_AUDIO, m_pCurrentAttribute);
 				frame.m_uTimestamp = llTimestamp / 10;
 
                 if (SUCCEEDED(hr)) {
@@ -264,8 +326,16 @@ HRESULT AudioCapture::OnReadSample(
 
 int AudioCapture::AddSink(Sink * sink)
 {
-    if ((sink != NULL) && (sink->SetSourceAttribute(&m_CurrentAttribute, ATTRIBUTE_TYPE_AUDIO) >= 0))
-    {
+    if (sink != NULL )
+	{
+		if (m_pCurrentAttribute)
+		{
+			sink->SetSourceAttribute(m_pCurrentAttribute, ATTRIBUTE_TYPE_AUDIO);
+		}
+		else
+		{
+			sink->SetSourceAttribute(m_pBestAttribute, ATTRIBUTE_TYPE_AUDIO);
+		}
         m_Sinks.push_back(sink);
     }
     return 0;
@@ -289,9 +359,22 @@ int AudioCapture::GetConfig(void* attribute)
 {
     if (attribute)
     {
-        *(AudioCaptureAttribute*)attribute = m_CurrentAttribute;
+		if (m_pCurrentAttribute)
+		{
+			*(AudioCaptureAttribute*)attribute = *m_pCurrentAttribute;
+		}
+		else
+		{
+			*(AudioCaptureAttribute*)attribute = *m_pBestAttribute;
+		}
     }
     return 0;
+}
+
+
+CString AudioCapture::GetName()
+{
+	return m_CaptureName;
 }
 
 
@@ -317,6 +400,8 @@ int AudioCapture::Start()
 	}
     m_file.open("capture.pcm", ios::out | ios::binary);
 #endif
+
+	this->CreateSourceReader();
 
 	m_pReader->ReadSample((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, NULL, NULL, NULL, NULL);
 

@@ -40,24 +40,28 @@ private:
     long                    m_nRefCount;        // Reference count.
     CRITICAL_SECTION        m_critsec;
 
-    IMFActivate				*m_pActivate;
     IMFSourceReader         *m_pReader;
     vector<VideoCaptureAttribute*> m_AttributeList;
-	VideoCaptureAttribute    m_BestAttribute;
-	VideoCaptureAttribute    m_CurrentAttribute;
+	VideoCaptureAttribute*    m_pBestAttribute = NULL;
+	VideoCaptureAttribute*    m_pCurrentAttribute = NULL;
     vector<Sink *>           m_Sinks;
 
 	CAPTURE_STATUS_E         m_Status = CAPTURE_STATUS_STOP;
 
+	CString                  m_CaptureName;
+	CString                  m_CaptureLink;
+
 private:
-	void EnumAttribute();
+	void EnumAttribute(IMFActivate* pActivate);
 	void CreateSourceReader();
+	HRESULT SetConfigInternal(VideoCaptureAttribute* pattr);
 
 public:
     int AddSink(Sink * sink);
     int GetSupportAttribute(void* attribute);
     int SetConfig(void* attribute);
 	int GetConfig(void* attribute);
+	CString GetName();
 	CAPTURE_STATUS_E GetStatus();
     int Start();
     int Stop();

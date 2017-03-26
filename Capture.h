@@ -32,8 +32,8 @@ public:
 public:
     static int Init();
     static int Uninit();
-    static int EnumVideoCature(std::vector<CString *> *vCaptureList);
-    static int EnumAudioCature(std::vector<CString *> *aCaptureList);
+    static int EnumVideoCature(const std::vector<Capture *> *& vCaptureList);
+    static int EnumAudioCature(const std::vector<Capture *> *& aCaptureList);
     static Capture* GetVideoCature(int index);
     static Capture* GetAudioCature(int index);
 
@@ -42,6 +42,7 @@ public:
     virtual int GetSupportAttribute(void* attribute) = 0;
     virtual int SetConfig(void* attribute) = 0;
 	virtual int GetConfig(void* attribute) = 0;
+	virtual CString GetName() = 0;
 	virtual CAPTURE_STATUS_E GetStatus() = 0;
     virtual int Start() = 0;
     virtual int Stop() = 0;
