@@ -47,6 +47,7 @@ MediaFrame::MediaFrame(IMFMediaBuffer* pBuffer, FrameType type, void* attribute)
 		m_height = pattr->height;
 		if (lStride<0){
 			m_stride = 0 - lStride;
+			Inversion();
 		}else{
 			m_stride = lStride;
 		}
@@ -71,4 +72,19 @@ MediaFrame::~MediaFrame()
 	{
 		free(m_pData);
 	}
+}
+
+
+void MediaFrame::Inversion()
+{
+	BYTE *pData = (BYTE*)malloc(m_dataSize);
+
+	for (int i = 0; i < m_height; i++)
+	{
+		BYTE *pDst = &pData[i*m_stride];
+		BYTE *pSrc = &m_pData[(m_height - i - 1)*m_stride];
+		memcpy(pDst, pSrc, m_stride);
+	}
+	free(m_pData);
+	m_pData = pData;
 }

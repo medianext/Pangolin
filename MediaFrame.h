@@ -1,7 +1,5 @@
 #pragma once
 
-#include "BufferLock.h"
-
 
 enum FrameType {
 
@@ -17,6 +15,9 @@ public:
     MediaFrame(FrameType frameType, GUID subtype, DWORD dataSize);
     MediaFrame(IMFMediaBuffer*, FrameType type, void* attribute);
     ~MediaFrame();
+
+private:
+	void Inversion();
 
 public:
     // common filed
