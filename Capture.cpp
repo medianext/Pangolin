@@ -140,3 +140,55 @@ Capture* Capture::GetAudioCature(int index)
     }
     return NULL;
 }
+
+
+bool IsVideoFormatSupport(const GUID &guid)
+{
+    switch (guid.Data1)
+    {
+    case D3DFMT_X8R8G8B8:
+    case D3DFMT_R8G8B8:
+    case FCC('YUY2'):
+    case FCC('I420'):
+    case FCC('NV12'):
+        return true;
+    default:
+        return false;
+    }
+}
+
+
+bool IsAudioFormatSupport(GUID &guid)
+{
+    switch (guid.Data1)
+    {
+    case WAVE_FORMAT_IEEE_FLOAT:
+        return true;
+    default:
+        return false;
+    }
+}
+
+LPCTSTR fmtName[] = {TEXT("RGB32"), TEXT("RGB24"), TEXT("YUY2"), TEXT("I420"), TEXT("NV12"), TEXT("FLPT"), };
+
+LPCTSTR GetFormatName(GUID &guid)
+{
+    switch (guid.Data1)
+    {
+    case D3DFMT_X8R8G8B8:
+        return fmtName[0];
+    case D3DFMT_R8G8B8:
+        return fmtName[1];
+    case FCC('YUY2'):
+        return fmtName[2];
+    case FCC('I420'):
+        return fmtName[3];
+    case FCC('NV12'):
+        return fmtName[4];
+    case WAVE_FORMAT_IEEE_FLOAT:
+        return fmtName[5];
+    default:
+        return NULL;
+    }
+    return NULL;
+}

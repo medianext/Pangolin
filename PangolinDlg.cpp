@@ -287,7 +287,7 @@ void CPangolinDlg::InitVideoAttribute()
 	for (int i = 0, j = 0; i < vCnt; i++)
 	{
 		wchar_t str[20];
-		swprintf(str, L"%dx%dp%d", (*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
+		swprintf(str, L"%s,%dx%dp%d", GetFormatName((*pVideoAttribute)[i]->format),(*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
 		wstring s = str;
 		if (strset.count(s) == 0)
 		{

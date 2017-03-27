@@ -98,28 +98,31 @@ void VideoCapture::EnumAttribute(IMFActivate* pActivate)
 						LONG lStride;
 						GUID subType;
 						pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
-						MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
-						MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
-						hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
-						if (FAILED(hr))
-						{
-							hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
-						}
+                        if (IsVideoFormatSupport(subType))
+                        {
+                            MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
+                            MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+                            hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+                            if (FAILED(hr))
+                            {
+                                hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
+                            }
 
-						VideoCaptureAttribute *attribute = new VideoCaptureAttribute();
-						attribute->format = subType;
-						attribute->stride = lStride;
-						attribute->width = uWidth;
-						attribute->height = uHeight;
-						attribute->fps = uNummerator;
-						m_AttributeList.push_back(attribute);
+                            VideoCaptureAttribute *attribute = new VideoCaptureAttribute();
+                            attribute->format = subType;
+                            attribute->stride = lStride;
+                            attribute->width = uWidth;
+                            attribute->height = uHeight;
+                            attribute->fps = uNummerator;
+                            m_AttributeList.push_back(attribute);
 
-						UINT32 factor = uWidth * uHeight * uNummerator;
-						if (factor > maxFactor)
-						{
-							maxFactor = factor;
-							m_pBestAttribute = attribute;
-						}
+                            UINT32 factor = uWidth * uHeight * uNummerator;
+                            if (factor > maxFactor)
+                            {
+                                maxFactor = factor;
+                                m_pBestAttribute = attribute;
+                            }
+                        }
 					}
 					SafeRelease(&pMediaType);
 				}

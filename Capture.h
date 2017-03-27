@@ -54,3 +54,6 @@ public:
     virtual int Stop() = 0;
 };
 
+bool IsVideoFormatSupport(const GUID &guid);
+bool IsAudioFormatSupport(GUID &guid);
+LPCTSTR GetFormatName(GUID &guid);

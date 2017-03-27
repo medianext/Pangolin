@@ -97,18 +97,21 @@ void AudioCapture::EnumAttribute(IMFActivate* pActivate)
 						UINT32 uChannel, nSamplesRate, wBitsPerSample;
 						GUID subType;
 						hr = pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
-						hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
-						hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
-						hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
+                        if (IsAudioFormatSupport(subType))
+                        {
+                            hr = pMediaType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &uChannel);
+                            hr = pMediaType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &nSamplesRate);
+                            hr = pMediaType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &wBitsPerSample);
 
-						AudioCaptureAttribute *attribute = new AudioCaptureAttribute();
-						attribute->format = subType;
-						attribute->channel = uChannel;
-						attribute->samplerate = nSamplesRate;
-						attribute->bitwide = wBitsPerSample;
-						m_AttributeList.push_back(attribute);
+                            AudioCaptureAttribute *attribute = new AudioCaptureAttribute();
+                            attribute->format = subType;
+                            attribute->channel = uChannel;
+                            attribute->samplerate = nSamplesRate;
+                            attribute->bitwide = wBitsPerSample;
+                            m_AttributeList.push_back(attribute);
 
-						m_pBestAttribute = attribute;
+                            m_pBestAttribute = attribute;
+                        }
 					}
 					SafeRelease(&pMediaType);
 				}
