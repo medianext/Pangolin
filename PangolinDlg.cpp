@@ -283,23 +283,16 @@ void CPangolinDlg::InitVideoAttribute()
 
 	int vCnt = videoCapture->GetSupportAttribute((void*)&pVideoAttribute);
 	videoCapture->GetConfig(&videoAttribute);
-	set<wstring> strset;
-	for (int i = 0, j = 0; i < vCnt; i++)
+	for (int i = 0; i < vCnt; i++)
 	{
-		wchar_t str[20];
-		swprintf(str, L"%s,%dx%dp%d", GetFormatName((*pVideoAttribute)[i]->format),(*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
-		wstring s = str;
-		if (strset.count(s) == 0)
-		{
-			strset.insert(s);
-			hComBox->AddString(str);
-			hComBox->SetItemData(j, (DWORD_PTR)(*pVideoAttribute)[i]);
-			if ((*pVideoAttribute)[i]->width == videoAttribute.width && (*pVideoAttribute)[i]->height == videoAttribute.height && (*pVideoAttribute)[i]->fps == videoAttribute.fps)
-			{
-				hComBox->SetCurSel(j);
-			}
-			j++;
-		}
+        CString str;
+        str.Format(TEXT("%s,%dx%dp%d"), GetFormatName((*pVideoAttribute)[i]->format),(*pVideoAttribute)[i]->width, (*pVideoAttribute)[i]->height, (*pVideoAttribute)[i]->fps);
+        hComBox->AddString(str);
+        hComBox->SetItemData(i, (DWORD_PTR)(*pVideoAttribute)[i]);
+        if ((*pVideoAttribute)[i]->width == videoAttribute.width && (*pVideoAttribute)[i]->height == videoAttribute.height && (*pVideoAttribute)[i]->fps == videoAttribute.fps)
+        {
+            hComBox->SetCurSel(i);
+        }
 	}
 }
 
@@ -320,9 +313,9 @@ void CPangolinDlg::InitAudioAttribute()
 	int aCnt = audioCapture->GetSupportAttribute((void*)&pAudioAttribute);
 	audioCapture->GetConfig(&audioAttribute);
 	for (int i = 0; i < aCnt; i++)
-	{
-		wchar_t str[20];
-		swprintf(str, TEXT("%s,%d,%d位"), (*pAudioAttribute)[i]->channel == 2 ? TEXT("立体声") : TEXT("单声道"), (*pAudioAttribute)[i]->samplerate, (*pAudioAttribute)[i]->bitwide);
+    {
+        CString str;
+        str.Format(TEXT("%s,%d,%d位"), (*pAudioAttribute)[i]->channel == 2 ? TEXT("立体声") : TEXT("单声道"), (*pAudioAttribute)[i]->samplerate, (*pAudioAttribute)[i]->bitwide);
 		hComBox->AddString(str);
 		hComBox->SetItemData(i, (DWORD_PTR)(*pAudioAttribute)[i]);
 		if (audioAttribute.samplerate == (*pAudioAttribute)[i]->samplerate && audioAttribute.channel == (*pAudioAttribute)[i]->channel && audioAttribute.bitwide == (*pAudioAttribute)[i]->bitwide)
