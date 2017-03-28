@@ -501,7 +501,7 @@ void CPangolinDlg::EnableAllControl(int bEnable)
 {
     CWnd* hChild = NULL;
     hChild = this->GetDlgItem(IDC_RTMPURL);
-    hChild->EnableWindow(bEnable);
+    ((CEdit*)hChild)->SetReadOnly(!bEnable);
 
     //±àÂë²ÎÊý
     hChild = this->GetDlgItem(IDC_VIDEO_CODEC);
