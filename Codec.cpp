@@ -130,7 +130,7 @@ static void TransformImage_RGB32(
 //-------------------------------------------------------------------
 // TransformImage_YUY2 
 //
-// YUY2 to RGB-32
+// YUY2 to I420
 //-------------------------------------------------------------------
 
 static void TransformImage_YUY2(
@@ -150,7 +150,7 @@ static void TransformImage_YUY2(
 	{
         WORD *pSrcPel = (WORD*)pSrc;
 
-        for (DWORD x = 0; x < dwWidthInPixels; x++)
+        for (DWORD x = 0; x < dwWidthInPixels; x+=2)
         {
             // Byte order is U0 Y0 V0 Y1
 

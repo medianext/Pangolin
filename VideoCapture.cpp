@@ -113,10 +113,10 @@ void VideoCapture::EnumAttribute(IMFActivate* pActivate)
                             attribute->stride = lStride;
                             attribute->width = uWidth;
                             attribute->height = uHeight;
-                            attribute->fps = uNummerator;
+                            attribute->fps = uNummerator / uDenominator;
                             m_AttributeList.push_back(attribute);
 
-                            UINT32 factor = uWidth * uHeight * uNummerator;
+                            UINT32 factor = attribute->width * attribute->height * attribute->fps;
                             if (factor > maxFactor)
                             {
                                 maxFactor = factor;
@@ -207,7 +207,7 @@ HRESULT VideoCapture::SetConfigInternal(VideoCaptureAttribute* pattr)
 			hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
 		}
 
-		if (uWidth == pattr->width && uHeight == pattr->height && uNummerator == pattr->fps && subType == pattr->format)
+		if (uWidth == pattr->width && uHeight == pattr->height && (uNummerator / uDenominator) == pattr->fps && subType == pattr->format)
 		{
 			hr = m_pReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, pMediaType);
 			if (SUCCEEDED(hr))
