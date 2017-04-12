@@ -274,8 +274,10 @@ int Rtmpc::SendMetadata()
         sizeof(prop)/sizeof(AMFObjectProperty), prop
     };
 
-    AVal val = { "onMetaData", strlen("onMetaData") };
-    ptr = AMF_EncodeString(ptr, pend, &val);
+    AVal val1 = { "@setDataFrame", strlen("@setDataFrame") };
+    AVal val2 = { "onMetaData", strlen("onMetaData") };
+    ptr = AMF_EncodeString(ptr, pend, &val1);
+    ptr = AMF_EncodeString(ptr, pend, &val2);
     ptr = AMF_EncodeEcmaArray(&obj, ptr, pend);
 
     pkt.m_nChannel = 0x04;
@@ -500,7 +502,7 @@ int Rtmpc::SendAudioHeader(MediaPacket* packet)
     *ptr++ = (nSamplerate << 7) | (nChannel << 3);
 
     pkt.m_nChannel = 0x04;
-    pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+    pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
     pkt.m_packetType = RTMP_PACKET_TYPE_AUDIO;
     pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
     pkt.m_hasAbsTimestamp = 0;
