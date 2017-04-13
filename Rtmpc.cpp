@@ -354,7 +354,7 @@ int Rtmpc::SendVideoHeader(MediaPacket* packet)
 	ptr += head.ppslen;
 
 	pkt.m_nChannel = 0x04;
-	pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+	pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
 	pkt.m_packetType = RTMP_PACKET_TYPE_VIDEO;
 	pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
 	pkt.m_hasAbsTimestamp = 0;
@@ -549,7 +549,7 @@ int Rtmpc::SendAudioData(MediaPacket* packet)
     ptr += packet->m_dataSize - 7;
 
     pkt.m_nChannel = 0x04;
-    pkt.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+    pkt.m_headerType = RTMP_PACKET_SIZE_LARGE;
     pkt.m_packetType = RTMP_PACKET_TYPE_AUDIO;
     pkt.m_nInfoField2 = m_pRtmp->m_stream_id;
     pkt.m_hasAbsTimestamp = 0;
