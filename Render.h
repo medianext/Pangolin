@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "stdafx.h"
 #include "Sink.h"
 
 
@@ -14,36 +15,24 @@ class Render :
 {
 
 public:
+    virtual ~Render();
+
+public:
     static void Init(HWND hWnd);
     static void Uninit();
     static Render* GetRender();
-    ~Render();
-private:
-    Render(HWND hWnd);
-    HRESULT TestCooperativeLevel();
-    HRESULT ChooseConversionFunction(REFGUID subtype);
-
-public:
-    int SetSourceAttribute(void* attribute, AttributeType type);
-    int SendFrame(MediaFrame * frame);
-
-    int DrawFrame(MediaFrame * frame);
-
-private:
-    HWND m_hWnd;
-
-    IDirect3D9              *m_pD3D;
-    IDirect3DDevice9        *m_pDevice;
-    IDirect3DSwapChain9     *m_pSwapChain;
-
-    D3DPRESENT_PARAMETERS   m_d3dpp;
-
-    RECT                    m_rcCanvas;
-    RECT                    m_rcDest;
-
-    GUID                    m_subtype;
-    D3DFORMAT               m_format;
-    
-    IMAGE_TRANSFORM_FN      m_convertFn;
 };
 
+
+RECT LetterBoxRect(const RECT& rcSrc, const RECT& rcDst);
+RECT CorrectAspectRatio(const RECT& src, const MFRatio& srcPAR);
+
+void TransformImage_RGB32(BYTE* pDst, LONG dstStride, const BYTE* pSrc, LONG srcStride, DWORD dwWidthInPixels, DWORD dwHeightInPixels);
+void TransformImage_RGB24(BYTE* pDst, LONG dstStride, const BYTE* pSrc, LONG srcStride, DWORD dwWidthInPixels, DWORD dwHeightInPixels);
+void TransformImage_YUY2(BYTE* pDst, LONG dstStride, const BYTE* pSrc, LONG srcStride, DWORD dwWidthInPixels, DWORD dwHeightInPixels);
+void TransformImage_I420(BYTE* pDst, LONG dstStride, const BYTE* pSrc, LONG srcStride, DWORD dwWidthInPixels, DWORD dwHeightInPixels);
+void TransformImage_NV12(BYTE* pDst, LONG dstStride, const BYTE* pSrc, LONG srcStride, DWORD dwWidthInPixels, DWORD dwHeightInPixels);
+
+
+extern VideoConversionFunction g_FormatConversions[];
+extern const DWORD g_cFormats;

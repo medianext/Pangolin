@@ -204,6 +204,7 @@
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="Capture.h" />
     <ClInclude Include="Codec.h" />
+    <ClInclude Include="Direct3D9Render.h" />
     <ClInclude Include="MediaFrame.h" />
     <ClInclude Include="MediaPacket.h" />
     <ClInclude Include="Pangolin.h" />
@@ -220,6 +221,7 @@
     <ClCompile Include="AudioCapture.cpp" />
     <ClCompile Include="Capture.cpp" />
     <ClCompile Include="Codec.cpp" />
+    <ClCompile Include="Direct3D9Render.cpp" />
     <ClCompile Include="MediaFrame.cpp" />
     <ClCompile Include="MediaPacket.cpp" />
     <ClCompile Include="Pangolin.cpp" />

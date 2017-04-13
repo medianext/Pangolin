@@ -60,6 +60,9 @@
     <ClInclude Include="Rtmpc.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Direct3D9Render.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pangolin.cpp">
@@ -96,6 +99,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Rtmpc.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Direct3D9Render.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
