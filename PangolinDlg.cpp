@@ -248,7 +248,14 @@ void CPangolinDlg::OnTimer(UINT_PTR nIDEvent)
 			rtmpc->GetRtmpStatistics(&rtmp_statistics);
 
 			CString str;
-			str.Format(TEXT("FPS: %.1f    Video: %.1fKB/s    Audio: %.1fKB/s\n"), code_statistics.videoDecFps, ((double)rtmp_statistics.videoBitrate)/1000, ((double)rtmp_statistics.audioBitrate)/1000);
+            if (rtmp_statistics.connected)
+            {
+                str.Format(TEXT("FPS: %.1f    Video: %.1fKB/s    Audio: %.1fKB/s\n"), code_statistics.videoDecFps, ((double)rtmp_statistics.videoBitrate) / 1000, ((double)rtmp_statistics.audioBitrate) / 1000);
+            }
+            else
+            {
+                str.Format(TEXT("状态：正在连接..."));
+            }
 
 			CWnd* hChild = this->GetDlgItem(IDC_STATIC_STATUS);
 			hChild->SetWindowText(str);
@@ -607,7 +614,7 @@ void CPangolinDlg::OnBnClickedPush()
 
 		KillTimer(CODEC_STATISTICS_TIMER);
 		hChild = this->GetDlgItem(IDC_STATIC_STATUS);
-		hChild->SetWindowText(TEXT("状态："));
+		hChild->SetWindowText(TEXT("状态：未连接"));
 
         codec->Stop();
         rtmpc->Stop();

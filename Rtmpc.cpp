@@ -150,45 +150,73 @@ int Rtmpc::DetectVideoData(unsigned char* pdata, int size, unsigned char **ppdat
 int Rtmpc::Connect()
 {
     int ret = 0;
+    int retval = 0;
 
-    m_pRtmp = RTMP_Alloc();;
-    if (m_pRtmp == NULL)
+    Disconnect();
+
+    do 
     {
-        OutputDebugString(TEXT("RTMP_Alloc failed!\n"));
-        return -1;
+        m_pRtmp = RTMP_Alloc();
+        if (m_pRtmp == NULL)
+        {
+            OutputDebugString(TEXT("RTMP_Alloc failed!\n"));
+            retval = -1;
+            break;
+        }
+
+        RTMP_Init(m_pRtmp);
+
+        ret = RTMP_SetupURL(m_pRtmp, m_Url);
+        if (ret == 0)
+        {
+            OutputDebugString(TEXT("Set rtmp url failed!\n"));
+            retval = -2;
+            break;
+        }
+
+        RTMP_EnableWrite(m_pRtmp);
+
+        ret = RTMP_Connect(m_pRtmp, NULL);
+        if (ret == 0)
+        {
+            OutputDebugString(TEXT("Rtmp connect failed!\n"));
+            retval = -3;
+            break;
+        }
+
+        ret = RTMP_ConnectStream(m_pRtmp, 0);
+        if (ret == 0)
+        {
+            OutputDebugString(TEXT("Rtmp connect stream failed!\n"));
+            retval = -4;
+            break;
+        }
+
+        ret = SetChunkSize(1024);
+        if (ret != 0)
+        {
+            OutputDebugString(TEXT("Rtmp set chunksize failed!\n"));
+            retval = -5;
+            break;
+        }
+
+        ret = SendMetadata();
+        if (ret < 0)
+        {
+            OutputDebugString(TEXT("Rtmpc send metadata failed!\n"));
+            retval = -6;
+            break;
+        }
+
+    } while (0);
+
+    if (retval<0)
+    {
+        Disconnect();
+        return retval;
     }
 
-    RTMP_Init(m_pRtmp);
-
-    ret = RTMP_SetupURL(m_pRtmp, m_Url);
-    if (ret==0)
-    {
-        OutputDebugString(TEXT("Set rtmp url failed!\n"));
-        return -2;
-    }
-
-    RTMP_EnableWrite(m_pRtmp);
-
-    ret = RTMP_Connect(m_pRtmp, NULL);
-    if (ret == 0)
-    {
-        OutputDebugString(TEXT("Rtmp connect failed!\n"));
-        return -2;
-    }
-
-    ret = RTMP_ConnectStream(m_pRtmp, 0);
-    if (ret == 0)
-    {
-        OutputDebugString(TEXT("Rtmp connect stream failed!\n"));
-        return -3;
-    }
-
-    ret = SetChunkSize(1024);
-    if (ret != 0)
-    {
-        OutputDebugString(TEXT("Rtmp set chunksize failed!\n"));
-        return -4;
-    }
+    m_bConnected = true;
 
     return 0;
 }
@@ -199,12 +227,18 @@ int Rtmpc::Disconnect()
     if (m_pRtmp)
     {
         RTMP_Close(m_pRtmp);
-
         RTMP_Free(m_pRtmp);
         m_pRtmp = NULL;
+        m_bConnected = false;
     }
 
     return 0;
+}
+
+
+bool Rtmpc::IsConnected()
+{
+    return m_bConnected && RTMP_IsConnected(m_pRtmp);
 }
 
 
@@ -579,19 +613,6 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
     Rtmpc* rtmpc = (Rtmpc*)lpParam;
 	int ret = 0;
 
-    if (rtmpc->Connect()<0)
-    {
-        rtmpc->Disconnect();
-        rtmpc->m_Status = RTMP_STATUS_STOP;
-        return 1;
-    }
-
-    ret = rtmpc->SendMetadata();
-	if (ret < 0)
-	{
-		OutputDebugString(TEXT("Rtmpc send metadata failed!\n"));
-	}
-
 	bool bFirst = true;
 
 	bool bHaveVideo = false;
@@ -609,6 +630,16 @@ DWORD WINAPI Rtmpc::RtmpProcessThread(LPVOID lpParam)
         if (rtmpc->m_QuitCmd == 1)
         {
             break;
+        }
+
+        if (!rtmpc->IsConnected())
+        {
+            if (rtmpc->Connect() < 0)
+            {
+                Sleep(1);
+                continue;
+            }
+            bFirst = true;
         }
 
         // Send video
@@ -718,6 +749,8 @@ DoStatistics:
 
     rtmpc->Disconnect();
 
+    OutputDebugString(TEXT("RtmpProcessThread exited...\n"));
+
     return 0;
 }
 
@@ -730,6 +763,7 @@ int Rtmpc::GetRtmpStatistics(RtmpStatistics* statistics)
 	if (statistics)
 	{
 		*statistics = m_statistics;
+        statistics->connected = IsConnected();
 	}
 	return 0;
 }

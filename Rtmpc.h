@@ -18,6 +18,7 @@
 
 
 struct RtmpStatistics {
+    bool     connected;
 	uint32_t videoTotalSnd;
 	uint32_t videoBitrate;
 	uint32_t audioTotalSnd;
@@ -49,6 +50,7 @@ public:
 private:
     int Connect();
     int Disconnect();
+    bool IsConnected();
     int SetChunkSize(int size);
     int SendMetadata();
     int SendVideoHeader(MediaPacket* packet);
