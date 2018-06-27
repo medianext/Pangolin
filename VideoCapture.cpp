@@ -88,9 +88,9 @@ void VideoCapture::EnumAttribute(IMFActivate* pActivate)
 				UINT32 maxFactor = 0;
 				DWORD dwMediaTypeCount = 0;
 				hr = pMediaTypeHandler->GetMediaTypeCount(&dwMediaTypeCount);
+				IMFMediaType * pMediaType = nullptr;
 				for (DWORD j = 0; j < dwMediaTypeCount; j++)
 				{
-					IMFMediaType * pMediaType = nullptr;
 					hr = pMediaTypeHandler->GetMediaTypeByIndex(j, &pMediaType);
 					if (SUCCEEDED(hr))
 					{
@@ -126,6 +126,32 @@ void VideoCapture::EnumAttribute(IMFActivate* pActivate)
 					}
 					SafeRelease(&pMediaType);
 				}
+
+				hr = pMediaTypeHandler->GetCurrentMediaType(&pMediaType);
+				if (SUCCEEDED(hr))
+				{
+					UINT32 uWidth, uHeight, uNummerator, uDenominator;
+					LONG lStride;
+					GUID subType;
+					pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+					MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
+					MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+					hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+					if (FAILED(hr))
+					{
+						hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
+					}
+
+					VideoCaptureAttribute *attribute = new VideoCaptureAttribute();
+					attribute->format = subType;
+					attribute->stride = lStride;
+					attribute->width = uWidth;
+					attribute->height = uHeight;
+					attribute->fps = uNummerator / uDenominator;
+					m_pCurrentAttribute = attribute;
+					SafeRelease(&pMediaType);
+				}
+
 				SafeRelease(&pMediaTypeHandler);
 			}
 			SafeRelease(&pStreamDescriptor);
@@ -169,11 +195,34 @@ void VideoCapture::CreateSourceReader()
 		if (!SUCCEEDED(hr))
 		{
 		}
+		IMFMediaType* pMediaType;
+		hr = m_pReader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pMediaType);
+		if (SUCCEEDED(hr))
+		{
+			UINT32 uWidth, uHeight, uNummerator, uDenominator;
+			LONG lStride;
+			GUID subType;
+			pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+			MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
+			MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+			hr = pMediaType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+			if (FAILED(hr))
+			{
+				hr = MFGetStrideForBitmapInfoHeader(subType.Data1, uWidth, &lStride);
+			}
 
-		SetConfigInternal(m_pBestAttribute);
+			VideoCaptureAttribute *attribute = new VideoCaptureAttribute();
+			attribute->format = subType;
+			attribute->stride = lStride;
+			attribute->width = uWidth;
+			attribute->height = uHeight;
+			attribute->fps = uNummerator / uDenominator;
+			m_pCurrentAttribute = attribute;
+		}
+		//SetConfigInternal(m_pBestAttribute);
 
-		SafeRelease(&pAttributes);
 	}
+	SafeRelease(&pAttributes);
 
 	SafeRelease(&pSource);
 
